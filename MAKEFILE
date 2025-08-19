@@ -1,6 +1,15 @@
 format:
 	uv run ruff format .
+	uv run ruff check --fix .
 
 lint:
-	uv run ruff lint .
+	uv run ruff check .
 	uv run mypy .
+
+run-agent:
+	if [ -z "$(model)" ]; then \
+		echo "Defaulting to model: gpt-oss:20b"; \
+	else \
+		echo "Running agent with model: $(model)"; \
+	fi
+	uv run python -m scripts.agent_cli run_agent --model=$(if $(model),$(model),gpt-oss:20b)
