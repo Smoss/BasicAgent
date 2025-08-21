@@ -29,4 +29,5 @@ dependencies = [
     "grandalf>=0.8",
     "pillow>=11.3.0",
     "langchain-tavily>=0.2.11",
+    "discord.py>=2.4.0",
 ]

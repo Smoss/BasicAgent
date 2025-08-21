@@ -1,18 +1,14 @@
-import json
-import os
-from langchain_community.tools import DuckDuckGoSearchResults, TavilySearchResults
+from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_community.tools import WikipediaQueryRun
-from langchain.tools import BaseTool, Tool
+from langchain.tools import Tool
 from datetime import datetime
-from langchain_tavily import TavilySearch
 from dotenv import load_dotenv
 
-from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
-from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
 load_dotenv()
+
 
 @tool
 def save_to_txt(text: str, filename: str = "research_output.txt") -> str:
@@ -42,27 +38,3 @@ search_tool = DuckDuckGoSearchResults(max_results=5, output_format="list")
 # )
 
 wiki_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
-
-class BasicToolNode:
-
-    def __init__(self, tools: list[BaseTool]):
-        self.tools_by_name = {tool.name: tool for tool in tools}
-
-    def __call__(self, inputs: dict) -> dict:
-        if messages := inputs.get("messages", []):
-            last_message = messages[-1]
-        else:
-            raise ValueError("No messages in state")
-        outputs = []
-        for tool_call in last_message.tool_calls:
-            tool_result = self.tools_by_name[tool_call['name']].invoke(tool_call['args'])
-            outputs.append(
-                ToolMessage(
-                    content=json.dumps(tool_result),
-                    name=tool_call['name'],
-                    tool_call_id=tool_call['id']
-                )
-            )
-
-        return {"messages": outputs}
-

@@ -1,42 +1,33 @@
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import START, StateGraph
 from langchain_ollama import ChatOllama
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 
 from agent.state import State
-from tools.human_in_the_loop import human_assist
 from tools.tools import save_tool, search_tool, wiki_tool
 from langgraph.checkpoint.memory import InMemorySaver
 
 from langgraph.prebuilt import tools_condition
 
 
-
 class Agent:
     model: str
 
-    def __init__(self, model: str = "gpt-oss:20b"):
+    def __init__(self, model: str = "gpt-oss:20b", context_window: int = 8192, debug: bool = False):
         print(f"Initializing agent with model: {model}")
         self.model = model
-
-    @staticmethod
-    def route_tools(
-        state: State,
-    ):
-        # print(state)
-        if isinstance(state, list):
-            ai_message = state[-1]
-        elif messages := state.get("messages", []):
-            ai_message = messages[-1]
-        else:
-            raise ValueError("No messages in state")
-        if hasattr(ai_message, "tool_calls") and len(ai_message.tool_calls) > 0:
-            return "tools"
-        return END
+        self.context_window = context_window
 
     def build_graph(self) -> CompiledStateGraph:
-        tools = [save_tool, wiki_tool, human_assist, search_tool]
-        llm = ChatOllama(model=self.model, temperature=0.6, num_gpu=-1, num_ctx=8192, keep_alive=True)
+        # Core tools plus Discord toolkit (read/send messages)
+        tools = [save_tool, wiki_tool, search_tool]
+        llm = ChatOllama(
+            model=self.model,
+            temperature=0.6,
+            num_gpu=-1,
+            num_ctx=self.context_window,
+            keep_alive=True,
+        )
         llm = llm.bind_tools(tools)
 
         def chatbot(state: State) -> State:
@@ -55,7 +46,8 @@ class Agent:
         graph_builder.add_edge("tools", "chatbot")
         memory = InMemorySaver()
         graph = graph_builder.compile(checkpointer=memory)
-        print(graph.get_graph().draw_mermaid())
+        if self.debug:
+            print(graph.get_graph().draw_mermaid())
         return graph
 
     @staticmethod

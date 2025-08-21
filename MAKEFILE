@@ -13,3 +13,10 @@ run-agent:
 		echo "Running agent with model: $(model)"; \
 	fi
 	uv run python -m scripts.agent_cli run_agent --model=$(if $(model),$(model),gpt-oss:20b)
+
+run-discord:
+	uv run python -m scripts.discord_bridge run \
+		--model=$(if $(model),$(model),qwen3:8b) \
+		--mention_only=$(if $(mention_only),$(mention_only),True) \
+		$(if $(allowed_channels),--allowed_channels="$(allowed_channels)",) \
+		$(if $(token),--token="$(token)",)
