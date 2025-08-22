@@ -211,6 +211,7 @@ dependencies = [
     { name = "ddgs" },
     { name = "discord-py" },
     { name = "duckduckgo-search" },
+    { name = "fandom-py" },
     { name = "fire" },
     { name = "grandalf" },
     { name = "ipython" },
@@ -240,6 +241,7 @@ requires-dist = [
     { name = "ddgs", specifier = ">=9.5.2" },
     { name = "discord-py", specifier = ">=2.4.0" },
     { name = "duckduckgo-search", specifier = ">=8.1.1" },
+    { name = "fandom-py", specifier = ">=0.2.1" },
     { name = "fire", specifier = ">=0.7.0" },
     { name = "grandalf", specifier = ">=0.8" },
     { name = "ipython", specifier = ">=9.4.0" },
@@ -589,6 +591,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/91/50/a9d80c47ff289c611ff12e63f7c5d13942c65d68125160cefd768c73e6e4/executing-2.2.0.tar.gz", hash = "sha256:5d108c028108fe2551d1a7b2e8b713341e2cb4fc0aa7dcf966fa4327a5226755", size = 978693 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7b/8f/c4d9bafc34ad7ad5d8dc16dd1347ee0e507a52c3adb6bfa8887e1c6a26ba/executing-2.2.0-py2.py3-none-any.whl", hash = "sha256:11387150cad388d62750327a53d3339fad4888b39a6fe233c3afbb54ecffd3aa", size = 26702 },
+]
+
+[[package]]
+name = "fandom-py"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/11/52/81e7ca6fadefc57ae0586d056581e65f9e2b91aa496210b38472437a6a8f/fandom-py-0.2.1.tar.gz", hash = "sha256:e78ea9927f8ae516d400291f1e8a59b6e0601529b20212ac422264f32ea676d0", size = 12970 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/07/9dc939c359748db752db1ea9fb64a709c1d55e559ab40ad177a414c3801f/fandom_py-0.2.1-py3-none-any.whl", hash = "sha256:67870618f1466c4f989a5f7eedd041ceccd1a3434d235a9feb6c74b2ccc7700e", size = 12218 },
 ]
 
 [[package]]
