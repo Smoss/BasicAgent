@@ -4,7 +4,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain.agents import create_tool_calling_agent, AgentExecutor
-from tools import save_tool, search_tool, wiki_tool
+from tools.tools import save_tool, search_tool, wiki_tool
 
 tools = [save_tool, search_tool, wiki_tool]
 load_dotenv()

@@ -1,6 +1,5 @@
 import os
 import asyncio
-import re
 from typing import Optional, Set
 
 import discord
@@ -18,15 +17,21 @@ class DiscordAgentClient(discord.Client):
         self,
         *,
         intents: discord.Intents,
-        model: Optional[str] = None,
+        model: str = "gpt-oss:20b",
         mention_only: bool = True,
         allowed_channels: Optional[Set[int]] = None,
         context_window: int = 16384,
+        system_prompt_path: str | None = None,
+        voice_lines_path: str | None = None,
+        max_voice_lines: int = 10,
     ):
         super().__init__(intents=intents)
         self.agent = Agent(
-            model=model or os.environ.get("MODEL", "gpt-oss:20b"),
+            model=model,
             context_window=context_window,
+            system_prompt_path=system_prompt_path,
+            voice_lines_path=voice_lines_path,
+            max_voice_lines=max_voice_lines,
         )
         self.graph = self.agent.build_graph()
         self.mention_only = mention_only
@@ -51,7 +56,9 @@ class DiscordAgentClient(discord.Client):
             should_reply = True
         elif self.mention_only:
             # Check if the user is mentioned by role
-            should_reply = self.user.name in {role.name for role in message.role_mentions}
+            should_reply = self.user.name in {
+                role.name for role in message.role_mentions
+            }
         else:
             should_reply = True
 
@@ -72,7 +79,6 @@ class DiscordAgentClient(discord.Client):
         thread_id = str(message.channel.id)
 
         async with message.channel.typing():
-
             # Run the graph synchronously in a thread to avoid blocking the event loop
             loop = asyncio.get_running_loop()
 
@@ -89,14 +95,18 @@ class DiscordAgentClient(discord.Client):
                         final = messages[-1]
                         try:
                             final_text = (
-                                final.content if hasattr(final, "content") else str(final)
+                                final.content
+                                if hasattr(final, "content")
+                                else str(final)
                             )
                         except Exception:
                             final_text = str(final)
                 # Remove think tokens, <think> and </think>, include newlines
-                think_start = final_text.find('<think>')
-                think_end = final_text.find('</think>')
-                final_text = (final_text[:think_start] + final_text[think_end + 8:]).strip()
+                think_start = final_text.find("<think>")
+                think_end = final_text.find("</think>")
+                final_text = (
+                    final_text[:think_start] + final_text[think_end + 8 :]
+                ).strip()
 
                 return final_text or "(no response)"
 
@@ -107,8 +117,10 @@ class DiscordAgentClient(discord.Client):
                 await message.reply(reply_text)
             else:
                 # Split long messages
-                chunks = [reply_text[i : i + 1900] for i in range(0, len(reply_text), 1900)]
-                for idx, chunk in enumerate(chunks):
+                chunks = [
+                    reply_text[i : i + 1900] for i in range(0, len(reply_text), 1900)
+                ]
+                for _, chunk in enumerate(chunks):
                     await message.reply(chunk, mention_author=False)
 
 
@@ -119,6 +131,10 @@ class DiscordBridge:
         model: Optional[str] = None,
         mention_only: bool = True,
         allowed_channels: Optional[str] = None,
+        system_prompt_path: str | None = None,
+        context_window: int = 16384,
+        voice_lines_path: str | None = None,
+        max_voice_lines: int = 3,
     ) -> None:
         """
         Run the Discord bot.
@@ -157,6 +173,10 @@ class DiscordBridge:
             model=model,
             mention_only=mention_only,
             allowed_channels=allowed_set,
+            system_prompt_path=system_prompt_path,
+            context_window=context_window,
+            voice_lines_path=voice_lines_path,
+            max_voice_lines=max_voice_lines,
         )
         client.run(token_value)
 
