@@ -31,4 +31,6 @@ dependencies = [
     "langchain-tavily>=0.2.11",
     "discord.py>=2.4.0",
     "fandom-py>=0.2.1",
+    "pyyaml>=6.0.2",
+    "types-pyyaml>=6.0.12.20250822",
 ]

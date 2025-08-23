@@ -16,7 +16,7 @@ import random
 from tools.voice_rag import build_voice_retriever, select_voice_lines
 
 
-class Agent:
+class SimpleCharacterAgent:
     model: str
 
     def __init__(
@@ -29,6 +29,7 @@ class Agent:
         voice_lines_path: str,
         max_voice_lines: int = 3,
         fandom_wiki: str,
+        character_name: str,
     ):
         print(f"Initializing agent with model: {model}")
         self.model = model
@@ -39,13 +40,16 @@ class Agent:
         self.max_voice_lines = max_voice_lines
         self.voice_store = None
         self.fandom_wiki = fandom_wiki
+        self.character_name = character_name
         with open(system_prompt_path, "r", encoding="utf-8") as f:
             self.system_prompt_text = f.read().strip()
         if voice_lines_path:
             with open(voice_lines_path, "r", encoding="utf-8") as f:
                 self.voice_lines = [ln.strip()[:200] for ln in f if ln.strip()]
 
-            self.voice_store = build_voice_retriever(voice_lines_path)
+            self.voice_store = build_voice_retriever(
+                voice_lines_path, self.character_name
+            )
 
     def build_graph(self) -> CompiledStateGraph:
         # Core tools plus Discord toolkit (read/send messages)
@@ -92,6 +96,7 @@ class Agent:
                     role = getattr(m, "type", None) or getattr(m, "role", None)
                     if role in ("human", "user"):
                         user_text = m.content
+                        assert isinstance(user_text, str)
                         break
                 except Exception as e:
                     print(f"Warning: Failed to get user text from {e}")

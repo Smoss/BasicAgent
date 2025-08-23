@@ -6,7 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from langchain_core.tools import tool
-import fandom
+import fandom  # type: ignore
 
 import json
 
