@@ -21,12 +21,14 @@ class Agent:
 
     def __init__(
         self,
+        *,
         model: str = "gpt-oss:20b",
         context_window: int = 8192,
         debug: bool = False,
-        system_prompt_path: str | None = None,
-        voice_lines_path: str | None = None,
+        system_prompt_path: str,
+        voice_lines_path: str,
         max_voice_lines: int = 3,
+        fandom_wiki: str,
     ):
         print(f"Initializing agent with model: {model}")
         self.model = model
@@ -36,14 +38,9 @@ class Agent:
         self.voice_lines: list[str] = []
         self.max_voice_lines = max_voice_lines
         self.voice_store = None
-        if system_prompt_path:
-            try:
-                with open(system_prompt_path, "r", encoding="utf-8") as f:
-                    self.system_prompt_text = f.read().strip()
-            except Exception as e:
-                print(
-                    f"Warning: Failed to load system prompt from {system_prompt_path}: {e}"
-                )
+        self.fandom_wiki = fandom_wiki
+        with open(system_prompt_path, "r", encoding="utf-8") as f:
+            self.system_prompt_text = f.read().strip()
         if voice_lines_path:
             with open(voice_lines_path, "r", encoding="utf-8") as f:
                 self.voice_lines = [ln.strip()[:200] for ln in f if ln.strip()]

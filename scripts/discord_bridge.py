@@ -21,9 +21,10 @@ class DiscordAgentClient(discord.Client):
         mention_only: bool = True,
         allowed_channels: Optional[Set[int]] = None,
         context_window: int = 16384,
-        system_prompt_path: str | None = None,
-        voice_lines_path: str | None = None,
+        system_prompt_path: str,
+        voice_lines_path: str,
         max_voice_lines: int = 10,
+        fandom_wiki: str,
     ):
         super().__init__(intents=intents)
         self.agent = Agent(
@@ -32,6 +33,7 @@ class DiscordAgentClient(discord.Client):
             system_prompt_path=system_prompt_path,
             voice_lines_path=voice_lines_path,
             max_voice_lines=max_voice_lines,
+            fandom_wiki=fandom_wiki,
         )
         self.graph = self.agent.build_graph()
         self.mention_only = mention_only
@@ -127,14 +129,16 @@ class DiscordAgentClient(discord.Client):
 class DiscordBridge:
     def run(
         self,
+        *,
         token: Optional[str] = None,
         model: Optional[str] = None,
         mention_only: bool = True,
         allowed_channels: Optional[str] = None,
-        system_prompt_path: str | None = None,
+        system_prompt_path: str,
         context_window: int = 16384,
-        voice_lines_path: str | None = None,
+        voice_lines_path: str,
         max_voice_lines: int = 3,
+        fandom_wiki: str,
     ) -> None:
         """
         Run the Discord bot.
@@ -177,6 +181,7 @@ class DiscordBridge:
             context_window=context_window,
             voice_lines_path=voice_lines_path,
             max_voice_lines=max_voice_lines,
+            fandom_wiki=fandom_wiki,
         )
         client.run(token_value)
 

@@ -6,6 +6,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from langchain_core.tools import tool
+import fandom
+
+import json
 
 load_dotenv()
 
@@ -38,3 +41,95 @@ search_tool = DuckDuckGoSearchResults(max_results=5, output_format="list")
 # )
 
 wiki_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+
+
+# --- Fandom tool builder ---
+def build_fandom_search_tool(default_wiki: str) -> Tool:
+    """
+    Search the wiki and return a list of candidate article titles.
+    Output JSON: { "wiki": str, "titles": [str, ...] }
+    """
+
+    def _fandom_search(query: str) -> str:
+        try:
+            fandom.set_wiki(default_wiki)
+        except Exception as e:
+            return json.dumps(
+                {
+                    "error": f"failed_to_set_wiki: {e}",
+                    "wiki": default_wiki,
+                }
+            )
+
+        results = fandom.search(query) or []
+        titles = [title for title, _ in results]
+        return json.dumps({"wiki": default_wiki, "titles": titles}, ensure_ascii=False)
+
+    return Tool(
+        name="fandom_search",
+        description=(
+            "Search the configured Fandom wiki and return JSON titles. "
+            "Input: query string. Output JSON: {wiki, titles:[str,...]}."
+        ),
+        func=_fandom_search,
+    )
+
+
+def build_fandom_pages_tool(default_wiki: str):
+    """
+    Fetch summaries for a list of Fandom article titles.
+
+    Input:
+      - titles: list[str] (article titles)
+      - sentences: int = -1 (max number of sentences per summary; -1 = full summary)
+
+    Output JSON:
+      {
+        "wiki": str,
+        "pages": [
+          { "title": str, "url": str, "summary": str }
+        ]
+      }
+    """
+
+    def _slugify(title: str) -> str:
+        return title.replace(" ", "_")
+
+    def fandom_pages(titles: list[str], sentences: int = -1) -> str:
+        try:
+            fandom.set_wiki(default_wiki)
+        except Exception as e:
+            return json.dumps(
+                {"error": f"failed_to_set_wiki: {e}", "wiki": default_wiki}
+            )
+
+        pages_out: list[dict] = []
+        for t in (titles or [])[:10]:
+            try:
+                summ = fandom.summary(t, sentences=sentences)
+                url = f"https://{default_wiki}.fandom.com/wiki/{_slugify(t)}"
+                pages_out.append({"title": t, "url": url, "summary": summ})
+                # print(f"Fetched summary for {t}: {summ}")
+            except Exception:
+                pages_out.append(
+                    {
+                        "title": t,
+                        "url": f"https://{default_wiki}.fandom.com/wiki/{_slugify(t)}",
+                        "summary": "",
+                    }
+                )
+
+        return json.dumps(
+            {"wiki": default_wiki, "pages": pages_out}, ensure_ascii=False
+        )
+
+    return Tool(
+        name="fandom_pages",
+        description=(
+            "Fetch summaries for a list of Fandom article titles. "
+            "Input: titles: list[str] (article titles) "
+            "sentences: int = -1 (max number of sentences per summary; -1 = full summary) "
+            "Output JSON: {wiki, pages:[{title,url,summary},...]}."
+        ),
+        func=fandom_pages,
+    )
