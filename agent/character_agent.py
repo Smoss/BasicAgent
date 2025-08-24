@@ -1,3 +1,4 @@
+import traceback
 from langgraph.graph import START, StateGraph
 from langchain_ollama import ChatOllama
 from langgraph.graph.state import CompiledStateGraph
@@ -14,6 +15,7 @@ from langgraph.prebuilt import tools_condition
 from langchain_core.messages import SystemMessage
 import random
 from tools.voice_rag import build_voice_retriever, select_voice_lines
+from tools.lore_db import build_lore_retriever
 
 
 class SimpleCharacterAgent:
@@ -35,12 +37,19 @@ class SimpleCharacterAgent:
         self.model = model
         self.context_window = context_window
         self.debug = debug
-        self.system_prompt_text: str | None = None
+        self.system_prompt_text: str
         self.voice_lines: list[str] = []
         self.max_voice_lines = max_voice_lines
         self.voice_store = None
         self.fandom_wiki = fandom_wiki
         self.character_name = character_name
+        # Pre-build lore retriever filtered to this character and wiki
+        self.lore_retriever = build_lore_retriever(
+            collection_name=f"{self.character_name}_lore",
+            where={"character": self.character_name},
+            search_k=13,
+        )
+
         with open(system_prompt_path, "r", encoding="utf-8") as f:
             self.system_prompt_text = f.read().strip()
         if voice_lines_path:
@@ -84,11 +93,32 @@ class SimpleCharacterAgent:
                 return None
             content = "Style exemplars (tone and cadence):\n- " + "\n- ".join(picks)
             return SystemMessage(content=content)
+        
+        def _lore_message(user_text: str) -> SystemMessage | None:
+            try:
+                docs = self.lore_retriever.invoke(user_text) or []
+                if docs:
+                    lines: list[str] = []
+                    for d in docs:
+                        title = (getattr(d, "metadata", {}) or {}).get("title", "Lore")
+                        url = (getattr(d, "metadata", {}) or {}).get("url", "")
+                        snippet = (getattr(d, "page_content", "") or "")
+                        if url:
+                            lines.append(f"- {title}: {snippet} (source: {url})")
+                        else:
+                            lines.append(f"- {title}: {snippet}")
+                    if lines:
+                        lore_msg = SystemMessage(
+                            content="Relevant lore (use for context, do not quote verbatim unless asked):\n" + "\n".join(lines)
+                        )
+                        print(f"Found {len(lines)} lore notes, with total length of {sum([len(line) for line in lines])}, titles: {', '.join([line.split(':')[0] for line in lines])}")
+                        return lore_msg
+            except Exception as e:
+                print(f"Warning: Lore retrieval failed: {e} \n{traceback.format_exc()}")
 
         def chatbot(state: State) -> State:
             messages = state["messages"]
-            if self.system_prompt_text:
-                messages = [SystemMessage(content=self.system_prompt_text)] + messages
+            system_messages = []
             # Use last user message as query for exemplar selection
             user_text = None
             for m in reversed(messages):
@@ -101,12 +131,15 @@ class SimpleCharacterAgent:
                 except Exception as e:
                     print(f"Warning: Failed to get user text from {e}")
             style_msg = _style_message(user_text)
+            lore_msg = _lore_message(user_text)
+            if lore_msg:
+                system_messages.append(lore_msg)
             if style_msg:
-                if self.system_prompt_text:
-                    messages = [messages[0], style_msg] + messages[1:]
-                else:
-                    messages = [style_msg] + messages
-            message = llm.invoke(messages)
+                system_messages.append(style_msg)
+            if self.system_prompt_text:
+                system_messages.append(SystemMessage(content=self.system_prompt_text))  
+            message = llm.invoke(system_messages + messages)
+            print(f"Message Usage: {message.usage_metadata}")
             return {"messages": [message]}
 
         tool_node = ToolNode(tools)

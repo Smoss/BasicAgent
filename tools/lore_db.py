@@ -16,6 +16,7 @@ def get_lore_store(collection_name: str = "lore") -> Chroma:
     db_root = os.path.join(".", "chroma_db")
     os.makedirs(db_root, exist_ok=True)
     embeddings = OllamaEmbeddings(model="nomic-embed-text", num_gpu=-1)
+    print(f"Using collection name: {collection_name}")
     return Chroma(
         collection_name=collection_name,
         persist_directory=db_root,

@@ -139,7 +139,7 @@ def store_pages(
         )
         for p in pages
     ]
-    return upsert_lore_documents(docs)
+    return upsert_lore_documents(docs, collection_name=f"{character_name}_lore")
 
 
 def ingest_persona_fandom(
