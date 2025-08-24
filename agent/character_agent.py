@@ -29,7 +29,8 @@ class SimpleCharacterAgent:
         debug: bool = False,
         system_prompt_path: str,
         voice_lines_path: str,
-        max_voice_lines: int = 3,
+        max_voice_lines: int = 6,
+        lore_search_k: int = 13,
         fandom_wiki: str,
         character_name: str,
     ):
@@ -40,23 +41,24 @@ class SimpleCharacterAgent:
         self.system_prompt_text: str
         self.voice_lines: list[str] = []
         self.max_voice_lines = max_voice_lines
-        self.voice_store = None
+        self.lore_search_k = lore_search_k
+        self.voice_retriever = None
         self.fandom_wiki = fandom_wiki
         self.character_name = character_name
         # Pre-build lore retriever filtered to this character and wiki
         self.lore_retriever = build_lore_retriever(
             collection_name=f"{self.character_name}_lore",
             where={"character": self.character_name},
-            search_k=13,
+            search_k=self.lore_search_k,
         )
 
         with open(system_prompt_path, "r", encoding="utf-8") as f:
             self.system_prompt_text = f.read().strip()
         if voice_lines_path:
             with open(voice_lines_path, "r", encoding="utf-8") as f:
-                self.voice_lines = [ln.strip()[:200] for ln in f if ln.strip()]
+                self.voice_lines = [ln.strip() for ln in f if ln.strip()]
 
-            self.voice_store = build_voice_retriever(
+            self.voice_retriever = build_voice_retriever(
                 voice_lines_path, self.character_name
             )
 
@@ -75,11 +77,9 @@ class SimpleCharacterAgent:
         def _style_message(user_text: str | None) -> SystemMessage | None:
             picks: list[str] = []
             # Prefer semantic selection if available
-            if self.voice_store:
+            if self.voice_retriever:
                 try:
-                    picks = select_voice_lines(
-                        self.voice_store, user_text, self.max_voice_lines
-                    )
+                    picks = [d.page_content for d in self.voice_retriever.invoke(user_text)]
                 except Exception as e:
                     picks = []
                     print(f"Warning: Failed to select voice lines from {e}")
@@ -91,6 +91,8 @@ class SimpleCharacterAgent:
                 picks = rng.sample(self.voice_lines, k=k)
             if not picks:
                 return None
+            print(f"Selected {len(picks)} voice lines")
+            print(f"Voice lines: {'\n'.join(picks)}")
             content = "Style exemplars (tone and cadence):\n- " + "\n- ".join(picks)
             return SystemMessage(content=content)
         

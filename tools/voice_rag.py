@@ -1,5 +1,6 @@
 from hashlib import md5
-from typing import List, Optional
+from typing import Any, List, Optional
+from langchain_core.retrievers import BaseRetriever
 import pandas as pd
 
 from langchain_ollama import OllamaEmbeddings
@@ -7,7 +8,7 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
 
-def build_voice_retriever(path: str, character_name: str) -> Chroma:
+def build_voice_retriever(path: str, character_name: str, max_voice_lines: int = 6, where: Optional[dict[str, Any]] = None) -> BaseRetriever:
     embeddings = OllamaEmbeddings(model="nomic-embed-text", num_gpu=-1)
     store = Chroma(
         collection_name=f"{character_name}_voice_lines",
@@ -28,7 +29,10 @@ def build_voice_retriever(path: str, character_name: str) -> Chroma:
             pass
         store.add_documents(documents=docs, ids=ids)
 
-    return store
+    kwargs: dict[str, Any] = {"k": max_voice_lines}
+    if where:
+        kwargs["filter"] = where
+    return store.as_retriever(search_kwargs=kwargs)
 
 
 def select_voice_lines(store: Chroma, query: Optional[str], k: int) -> List[str]:

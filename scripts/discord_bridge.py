@@ -97,11 +97,29 @@ class DiscordAgentClient(discord.Client):
         if len(reply_text) <= 1900:
             await message.reply(reply_text)
         else:
-            # Split long messages
-            chunks = [
-                reply_text[i : i + 1900] for i in range(0, len(reply_text), 1900)
-            ]
-            for _, chunk in enumerate(chunks):
+            # Split long messages along new lines
+            lines = reply_text.split('\n')
+            chunks = []
+            current_chunk = ""
+            
+            for line in lines:
+                # If adding this line would exceed the limit, start a new chunk
+                if len(current_chunk) + len(line) + 1 > 1900:  # +1 for newline
+                    if current_chunk:
+                        chunks.append(current_chunk.rstrip())
+                        current_chunk = line
+                    else:
+                        # If a single line is too long, split it by character count
+                        chunks.append(line[:1900])
+                        current_chunk = line[1900:]
+                else:
+                    current_chunk += line + '\n'
+            
+            # Add the last chunk if it has content
+            if current_chunk.strip():
+                chunks.append(current_chunk.rstrip())
+            
+            for i, chunk in enumerate(chunks):
                 await message.reply(chunk, mention_author=False)
 
     async def on_message(self, message: discord.Message):
