@@ -23,6 +23,7 @@ class DiscordAgentClient(discord.Client):
         context_window: int = 16384,
         config_path: str,
         max_voice_lines: int = 10,
+        debug: bool = False,
     ):
         super().__init__(intents=intents)
         with open(config_path, "r", encoding="utf-8") as f:
@@ -39,6 +40,7 @@ class DiscordAgentClient(discord.Client):
             max_voice_lines=max_voice_lines,
             fandom_wiki=fandom_wiki,
             character_name=character_name,
+            debug=debug,
         )
         self.graph = self.agent.build_graph()
         self.mention_only = mention_only
@@ -166,6 +168,7 @@ class DiscordBridge:
         context_window: int = 16384,
         max_voice_lines: int = 3,
         config_path: str = "personas/democracy_officer/config.yaml",
+        debug: bool = False,
     ) -> None:
         """
         Run the Discord bot.
@@ -207,6 +210,7 @@ class DiscordBridge:
             context_window=context_window,
             max_voice_lines=max_voice_lines,
             config_path=config_path,
+            debug=debug,
         )
         client.run(token_value)
 

@@ -16,15 +16,16 @@ run-agent:
 
 run-discord:
 	uv run python -m scripts.discord_bridge run \
-		--model=$(if $(model),$(model),gemma3:12b) \
+		--model=$(if $(model),$(model),qwen3:14b) \
 		--mention_only=$(if $(mention_only),$(mention_only),True) \
 		--system_prompt_path=$(if $(system_prompt_path),$(system_prompt_path),personas\democracy_officer\helldivers_democracy_officer.txt) \
 		--voice_lines_path=$(if $(voice_lines_path),$(voice_lines_path),personas\democracy_officer\voice_lines.txt) \
 		--fandom_wiki=$(if $(fandom_wiki),$(fandom_wiki),helldivers) \
 		--max_voice_lines=$(if $(max_voice_lines),$(max_voice_lines),13) \
-		--context_window=$(if $(context_window),$(context_window),8192) \
+		--context_window=$(if $(context_window),$(context_window),14000) \
 		$(if $(allowed_channels),--allowed_channels="$(allowed_channels)",) \
-		$(if $(token),--token="$(token)",)
+		$(if $(token),--token="$(token)",) \
+		$(if $(debug),--debug=$(debug),)
 
 ingest-fandom-wiki:
 	uv run python -m scripts.ingest_fandom_lore \

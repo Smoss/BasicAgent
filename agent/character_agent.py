@@ -1,4 +1,5 @@
 import datetime
+from datetime import timedelta
 import traceback
 from langchain_core.language_models import LanguageModelInput
 from langgraph.graph import START, StateGraph
@@ -7,7 +8,10 @@ from langgraph.graph.state import CompiledStateGraph, Runnable
 from langgraph.prebuilt import ToolNode
 
 from agent.context_prompt import create_context_prompt
+from agent.helldivers.nodes import retrieve_campaigns, retrieve_current_status, retrieve_major_orders, retrieve_news
 from agent.state import State
+from tools.helldivers.training_manual_api import get_campaigns
+from tools.helldivers.training_manual_types import convert_current_event_list, convert_major_order_list, convert_news_list, convert_planet_list
 from tools.tools import save_tool, search_tool, wiki_tool
 from tools.memory import memory_add, memory_search
 from langgraph.checkpoint.memory import InMemorySaver
@@ -37,7 +41,7 @@ class SimpleCharacterAgent:
         lore_search_k: int = 8,
         fandom_wiki: str,
         character_name: str,
-        additional_context_k: int = 5,
+        additional_context_k: int = 10,
     ):
         print(f"Initializing agent with model: {model}")
         self.model = model
@@ -153,7 +157,7 @@ class SimpleCharacterAgent:
             return {"retrieved_style_docs": style_docs}
 
         def retrieve_context(state: State) -> State:
-            """Step 3: Create context retriever that picks additional documents"""
+            """Step 5: Create context retriever that picks additional documents"""
             messages = state["messages"]
             retrieved_lore_docs = state.get("retrieved_lore_docs", [])
             
@@ -177,8 +181,33 @@ class SimpleCharacterAgent:
             print('--------------------------------')
             print(f"Already retrieved {len(already_retrieved_titles)} documents")
             print(f"With titles: {already_retrieved_titles}")
-            
-            context_prompt = create_context_prompt(self.system_prompt_text, user_text, already_retrieved_titles, already_retrieved_content, self.all_available_titles)
+
+            current_planets = state.get("current_planets", "")
+            current_major_orders = state.get("current_major_orders", "")
+
+            current_planets_context = f"The following planets are currently being contested:\n{convert_planet_list(current_planets)}"
+            current_major_orders_context = f"The following major orders are currently active:\n{convert_major_order_list(current_major_orders)}"
+
+            current_status = state.get("current_status", "")
+            current_events = current_status.globalEvents
+
+            current_status_context = f"The current status is:\n{convert_current_event_list(current_events)}"
+
+    
+            current_news = state.get("past_week_news", "")
+            current_news_context = f"The past week's news is:\n{convert_news_list(current_news)}"
+
+
+            additional_context = f"{current_planets_context}\n{current_major_orders_context}\n{current_status_context}\n{current_news_context}"
+            context_prompt = create_context_prompt(
+                self.system_prompt_text, 
+                user_text, 
+                already_retrieved_titles, 
+                already_retrieved_content, 
+                self.all_available_titles,
+                additional_context
+            )
+            print(f"Context prompt: {context_prompt}")
 
             try:
                 response = context_llm.invoke([HumanMessage(content=context_prompt)])
@@ -263,10 +292,52 @@ class SimpleCharacterAgent:
                 print(f"Voice lines: {'\n'.join(style_lines)}")
                 system_messages.append(style_msg)
             
+            if (active_campaigns := state.get("active_campaigns")):
+                current_planets = "When describing planets avoid repeating the same information.\n"
+                "Don't quote exact percentages, use evocative language.\nProvide a description of the planet's biome\n"
+                "Don't refer to planets not mentioned here unless they are explicitly mentioned in the conversation, Super Earth is the exception to this rule.\n"
+                "Please keep track of which faction is fighting on which planet.\n"
+                "The following planets are currently being contested:\n"
+                current_planets += convert_planet_list(active_campaigns)
+                # print(f"Current planets: {current_planets}")
+                campaign_msg = SystemMessage(
+                    content=current_planets
+                )
+                system_messages.append(campaign_msg)
+            
+            if (active_major_orders := state.get("active_major_orders")):
+                current_major_orders = "When describing major orders avoid repeating the same information.\n"
+                "Don't quote exact percentages, use evocative language.\nProvide a description of the major order.\n"
+                "When talking about the time remaining, use vague language. E.g. 'Only a week remains', 'We'll fail in a few days', 'Only a few hours remain'.\n"
+                "Only use the first 3 significant digits of the current value and target value.\n"
+                "The following major orders are currently active:\n"
+                current_major_orders += convert_major_order_list(active_major_orders)
+                print(f"Current major orders: {current_major_orders}")
+                major_order_msg = SystemMessage(
+                    content=current_major_orders
+                )
+                system_messages.append(major_order_msg)
+            
+            # if (past_week_news := state.get("past_week_news")):
+            #     current_news = "The past week's news is:\n"
+            #     current_news += convert_news_list(past_week_news)
+            #     print(f"Current news: {current_news}")
+            #     news_msg = SystemMessage(
+            #         content=current_news
+            #     )
+            #     system_messages.append(news_msg)
+            
+            # if (current_status := state.get("current_status")):
+            #     current_status_msg = SystemMessage(
+            #         content=f"The current events are:\n{convert_current_event_list(current_status.globalEvents)}"
+            #     )
+            #     system_messages.append(current_status_msg)
+
             # Add system prompt
             if self.system_prompt_text:
                 system_messages.append(SystemMessage(content=self.system_prompt_text))
-            
+            print(f"System messages: {system_messages}")
+
             message = llm.invoke(system_messages + messages)
             print(f"Message Usage: {message.usage_metadata}")
             return {"messages": [message]}
@@ -277,14 +348,22 @@ class SimpleCharacterAgent:
         graph_builder.add_node("retrieve_lore", retrieve_lore)
         graph_builder.add_node("retrieve_style", retrieve_style)
         graph_builder.add_node("retrieve_context", retrieve_context)
+        graph_builder.add_node("retrieve_campaigns", retrieve_campaigns)
+        graph_builder.add_node("retrieve_major_orders", retrieve_major_orders)
+        graph_builder.add_node("retrieve_current_status", retrieve_current_status)
+        graph_builder.add_node("retrieve_news", retrieve_news)
         graph_builder.add_node("chatbot", chatbot)  
         
         # Add edges
         graph_builder.add_edge(START, "retrieve_lore")
         graph_builder.add_edge("retrieve_lore", "retrieve_style")
-        graph_builder.add_edge("retrieve_style", "retrieve_context")
+        graph_builder.add_edge("retrieve_style", "retrieve_campaigns")
+        graph_builder.add_edge("retrieve_campaigns", "retrieve_major_orders")
+        graph_builder.add_edge("retrieve_major_orders", "retrieve_current_status")
+        graph_builder.add_edge("retrieve_current_status", "retrieve_news")
+        graph_builder.add_edge("retrieve_news", "retrieve_context")
         graph_builder.add_edge("retrieve_context", "chatbot")
-        
+
         memory = InMemorySaver()
         graph = graph_builder.compile(checkpointer=memory)
         if self.debug:
@@ -317,7 +396,7 @@ class SimpleCharacterAgent:
                 break
             except Exception as e:
                 print(e)
-                # fallback to print the error
+                # fallback to print the error4
                 user_input = f"What do you think of the error?\n{e}"
                 self.stream_graph_updates(graph, user_input)
                 break

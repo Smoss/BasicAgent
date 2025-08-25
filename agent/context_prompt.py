@@ -1,6 +1,13 @@
 
 
-def create_context_prompt(system_prompt_text: str, user_text: str, already_retrieved_titles: list[str], already_retrieved_content: list[str], all_available_titles: list[str]) -> str:
+def create_context_prompt(
+    system_prompt_text: str, 
+    user_text: str, 
+    already_retrieved_titles: list[str], 
+    already_retrieved_content: list[str], 
+    all_available_titles: list[str],
+    additional_context: str
+) -> str:
     return f"""You are a context retrieval assistant for a character AI system.
 
     System prompt for the character:
@@ -14,7 +21,10 @@ def create_context_prompt(system_prompt_text: str, user_text: str, already_retri
     All available documents in the database:
     {chr(10).join([f"- {title}" for title in all_available_titles])}
 
-    Based on the user message, system prompt, and already retrieved documents, select 3-5 additional document titles from the available list that would provide useful context. 
+    Additional context:
+    {additional_context}
+
+    Based on the user message, system prompt, and already retrieved documents, select 5-7 additional document titles from the available list that would provide useful context. 
     Focus on gaps in knowledge or areas that would provide useful context.
 
     Return only the selected document titles, one per line, without numbering or additional text:"""
