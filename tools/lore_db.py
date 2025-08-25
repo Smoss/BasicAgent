@@ -16,7 +16,6 @@ def get_lore_store(collection_name: str = "lore") -> Chroma:
     db_root = os.path.join(".", "chroma_db")
     os.makedirs(db_root, exist_ok=True)
     embeddings = OllamaEmbeddings(model="nomic-embed-text", num_gpu=-1)
-    print(f"Using collection name: {collection_name}")
     return Chroma(
         collection_name=collection_name,
         persist_directory=db_root,
@@ -108,5 +107,37 @@ def build_lore_retriever(
     if where:
         kwargs["filter"] = where
     return store.as_retriever(search_kwargs=kwargs)
+
+
+def get_all_document_titles(
+    *,
+    collection_name: str = "lore",
+    where: Optional[dict[str, Any]] = None,
+) -> list[str]:
+    """Get all document titles from the vector database"""
+    store = get_lore_store(collection_name)
+    
+    # Get all documents from the collection
+    if where:
+        # If we have a filter, we need to get all documents and filter them
+        # This is a bit inefficient but necessary for filtered collections
+        all_docs = store.get()
+        filtered_titles = []
+        for i, metadata in enumerate(all_docs.get("metadatas", [])):
+            if metadata and all(metadata.get(k) == v for k, v in where.items()):
+                title = metadata.get("title", "Unknown")
+                if title not in filtered_titles:
+                    filtered_titles.append(title)
+        return filtered_titles
+    else:
+        # Get all documents without filter
+        all_docs = store.get()
+        titles = []
+        for metadata in all_docs.get("metadatas", []):
+            if metadata:
+                title = metadata.get("title", "Unknown")
+                if title not in titles:
+                    titles.append(title)
+        return titles
 
 

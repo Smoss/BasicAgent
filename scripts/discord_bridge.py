@@ -83,11 +83,12 @@ class DiscordAgentClient(discord.Client):
                     except Exception:
                         final_text = str(final)
             # Remove think tokens, <think> and </think>, include newlines
-            think_start = final_text.find("<think>")
-            think_end = final_text.find("</think>")
-            final_text = (
-                final_text[:think_start] + final_text[think_end + 8 :]
-            ).strip()
+            if final_text and '</think>' in final_text:
+                think_start = final_text.find("<think>")
+                think_end = final_text.find("</think>")
+                final_text = (
+                    final_text[:think_start] + final_text[think_end + 8 :]
+                ).strip()
 
             return final_text or "(no response)"
 

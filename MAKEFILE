@@ -16,7 +16,7 @@ run-agent:
 
 run-discord:
 	uv run python -m scripts.discord_bridge run \
-		--model=$(if $(model),$(model),qwen3:8b) \
+		--model=$(if $(model),$(model),gemma3:12b) \
 		--mention_only=$(if $(mention_only),$(mention_only),True) \
 		--system_prompt_path=$(if $(system_prompt_path),$(system_prompt_path),personas\democracy_officer\helldivers_democracy_officer.txt) \
 		--voice_lines_path=$(if $(voice_lines_path),$(voice_lines_path),personas\democracy_officer\voice_lines.txt) \
