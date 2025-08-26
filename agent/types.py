@@ -18,3 +18,9 @@ class DocumentsQuery(BaseModel):
     documents: list[DocumentIdTitle] = Field(
         description="The list of documents to retrieve, as a list of DocumentIdTitle objects"
     )
+
+
+class WikiPage(BaseModel):
+    title: str = Field(description="The title of the page")
+    url: str = Field(description="The URL of the page")
+    raw: str = Field(description="The raw content of the page")

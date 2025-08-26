@@ -7,6 +7,7 @@ from tools.helldivers.training_manual_types import (
     MajorOrder,
     MajorOrderTask,
     News,
+    Planet,
 )
 
 
@@ -72,3 +73,13 @@ def get_past_week_news(state: State) -> list[News]:
     past_week_news = list(news_dict.values())
     past_week_news.sort(key=lambda x: x.published)
     return past_week_news
+
+
+def get_all_planets() -> list[Planet]:
+    """Get a list of all planets in the game"""
+    planets_raw = requests.get("https://helldiverstrainingmanual.com/api/v1/planets")
+    planets = planets_raw.json()
+    print(f"Found {len(planets)} planets")
+    # print(f"Planets: {planets}...")
+    planets = [Planet(**planet) for planet in planets.values()]
+    return planets

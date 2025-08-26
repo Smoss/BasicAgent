@@ -34,3 +34,9 @@ ingest-fandom-wiki:
 		--model=$(if $(model),$(model),gemma3:4b) \
 		--persona_dir=$(if $(persona_dir),$(persona_dir),personas\democracy_officer) \
 		--save_dir=$(if $(save_dir),$(save_dir),personas\democracy_officer\debug)
+
+ingest-planet-lore:
+	uv run python -m scripts.ingest_planet_lore \
+		--model=$(if $(model),$(model),gemma3:4b) \
+		--persona_dir=$(if $(persona_dir),$(persona_dir),personas\democracy_officer) \
+		--save_dir=$(if $(save_dir),$(save_dir),personas\democracy_officer\debug\planet_lore)

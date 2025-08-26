@@ -8,6 +8,18 @@ class Biome(BaseModel):
     description: str
 
 
+class Environmental(BaseModel):
+    name: str
+    description: str
+
+
+class Planet(BaseModel):
+    name: str
+    sector: str
+    biome: Biome | None = None
+    environmentals: list[Environmental]
+
+
 class MajorOrderTask(BaseModel):
     type: int
     target_value: int

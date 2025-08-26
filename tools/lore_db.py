@@ -34,6 +34,7 @@ def build_lore_doc(
     character_name: str,
     raw_source: Optional[str] = None,
     extra_metadata: Optional[dict[str, Any]] = None,
+    doc_id: Optional[str] = None,
 ) -> Document:
     metadata: dict[str, Any] = {
         "title": title,
@@ -47,7 +48,8 @@ def build_lore_doc(
     if extra_metadata:
         metadata.update(extra_metadata)
 
-    doc_id = _stable_id("fandom", wiki, title, character_name)
+    if doc_id is None:
+        doc_id = _stable_id(wiki, title, character_name)
     return Document(page_content=summary, metadata=metadata, id=doc_id)
 
 
