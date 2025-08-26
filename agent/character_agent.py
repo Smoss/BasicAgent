@@ -29,6 +29,8 @@ from tools.voice_rag import build_voice_retriever
 from tools.lore_db import build_lore_retriever, get_all_document_titles, get_lore_store
 from langchain_core.documents import Document
 
+from utils.persona_config import PersonaConfig
+
 
 class SimpleCharacterAgent:
     model: str
@@ -39,13 +41,10 @@ class SimpleCharacterAgent:
         model: str = "gpt-oss:20b",
         context_window: int = 8192,
         debug: bool = False,
-        system_prompt_path: str,
-        voice_lines_path: str,
         max_voice_lines: int = 6,
         lore_search_k: int = 8,
-        fandom_wiki: str,
-        character_name: str,
         additional_context_k: int = 10,
+        persona_config: PersonaConfig,
     ):
         print(f"Initializing agent with model: {model}")
         self.model = model
@@ -56,11 +55,11 @@ class SimpleCharacterAgent:
         self.max_voice_lines = max_voice_lines
         self.lore_search_k = lore_search_k
         self.voice_retriever = None
-        self.fandom_wiki = fandom_wiki
-        self.character_name = character_name
+        self.fandom_wiki = persona_config.fandom_wiki
+        self.character_name = persona_config.character_name
         # Pre-build lore retriever filtered to this character and wiki
         self.lore_retriever = build_lore_retriever(
-            collection_name=f"{self.character_name}_lore",
+            collection_name=f"{self.character_name}_lore",  # type: ignore
             where={"character": self.character_name},
             search_k=self.lore_search_k,
         )
@@ -73,10 +72,10 @@ class SimpleCharacterAgent:
         )
         self.additional_context_k = additional_context_k
 
-        with open(system_prompt_path, "r", encoding="utf-8") as f:
+        with open(persona_config.system_prompt_path, "r", encoding="utf-8") as f:
             self.system_prompt_text = f.read().strip()
-        if voice_lines_path:
-            with open(voice_lines_path, "r", encoding="utf-8") as f:
+        if persona_config.voice_lines_path:
+            with open(persona_config.voice_lines_path, "r", encoding="utf-8") as f:
                 self.voice_lines = [ln.strip() for ln in f if ln.strip()]
 
             self.voice_retriever = build_voice_retriever(self.character_name)

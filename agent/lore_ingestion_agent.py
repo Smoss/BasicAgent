@@ -1,13 +1,12 @@
 import os
-from dataclasses import dataclass
 from typing import List, Optional
 
 import fandom  # type: ignore
-import yaml  # type: ignore
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 
 from tools.lore_db import build_lore_doc, upsert_lore_documents
+from utils.persona_config import load_persona_config
 
 
 SUMMARIZE_PROMPT = ChatPromptTemplate.from_template(
@@ -23,26 +22,6 @@ SUMMARIZE_PROMPT = ChatPromptTemplate.from_template(
         "Concise Lore Notes:"
     )
 )
-
-
-@dataclass
-class PersonaConfig:
-    character_name: str
-    system_prompt_path: str
-    voice_lines_path: str | None
-    fandom_wiki: str
-
-
-def load_persona_config(persona_dir: str) -> PersonaConfig:
-    cfg_path = os.path.join(persona_dir, "config.yaml")
-    with open(cfg_path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return PersonaConfig(
-        character_name=data["character_name"],
-        system_prompt_path=data.get("system_prompt_path", ""),
-        voice_lines_path=data.get("voice_lines_path"),
-        fandom_wiki=data.get("fandom_wiki", ""),
-    )
 
 
 def load_topics(persona_dir: str) -> List[str]:

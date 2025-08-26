@@ -16,15 +16,13 @@ run-agent:
 
 embed-voice-lines:
 	uv run python -m scripts.embed_voice_lines \
-		--config_path=$(if $(config_path),$(config_path),personas\democracy_officer\config.yaml)
+		--config_path=$(if $(config_path),$(config_path),personas\democracy_officer)
 
 run-discord:
 	uv run python -m scripts.discord_bridge run \
 		--model=$(if $(model),$(model),qwen3:14b) \
 		--mention_only=$(if $(mention_only),$(mention_only),True) \
-		--system_prompt_path=$(if $(system_prompt_path),$(system_prompt_path),personas\democracy_officer\helldivers_democracy_officer.txt) \
-		--voice_lines_path=$(if $(voice_lines_path),$(voice_lines_path),personas\democracy_officer\voice_lines.txt) \
-		--fandom_wiki=$(if $(fandom_wiki),$(fandom_wiki),helldivers) \
+		--config_path=$(if $(config_path),$(config_path),personas\democracy_officer) \
 		--max_voice_lines=$(if $(max_voice_lines),$(max_voice_lines),13) \
 		--context_window=$(if $(context_window),$(context_window),16384) \
 		$(if $(allowed_channels),--allowed_channels="$(allowed_channels)",) \

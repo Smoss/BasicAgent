@@ -5,8 +5,8 @@ from typing import Optional, Set
 import discord
 from dotenv import load_dotenv
 import fire  # type: ignore
-import yaml
 from agent.character_agent import SimpleCharacterAgent
+from utils.persona_config import load_persona_config
 
 
 load_dotenv()
@@ -26,20 +26,12 @@ class DiscordAgentClient(discord.Client):
         debug: bool = False,
     ):
         super().__init__(intents=intents)
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        character_name = config["character_name"]
-        system_prompt_path = config["system_prompt_path"]
-        voice_lines_path = config["voice_lines_path"]
-        fandom_wiki = config["fandom_wiki"]
+        persona_config = load_persona_config(config_path)
         self.agent = SimpleCharacterAgent(
             model=model,
             context_window=context_window,
-            system_prompt_path=system_prompt_path,
-            voice_lines_path=voice_lines_path,
+            persona_config=persona_config,
             max_voice_lines=max_voice_lines,
-            fandom_wiki=fandom_wiki,
-            character_name=character_name,
             debug=debug,
         )
         self.graph = self.agent.build_graph()

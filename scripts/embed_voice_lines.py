@@ -1,14 +1,14 @@
-import yaml
 import fire  # type: ignore
 
 from tools.voice_rag import populate_voice_lines
+from utils.persona_config import load_persona_config
 
 
 def main(config_path: str):
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    persona_config = load_persona_config(config_path)
+    assert persona_config.voice_lines_path
 
-    populate_voice_lines(config["voice_lines_path"], config["character_name"])
+    populate_voice_lines(persona_config.voice_lines_path, persona_config.character_name)
 
 
 if __name__ == "__main__":
