@@ -35,12 +35,12 @@ save_tool = Tool(
 #     """Search the web for information"""
 #     return TavilySearch(max_results=5).invoke({"query": query})
 
-search_tool = DuckDuckGoSearchResults(max_results=5, output_format="list")
+search_tool = DuckDuckGoSearchResults(max_results=5, output_format="list")  # type: ignore
 # search_tool = Tool(
 #     name="search_tool", description="Search the web for information", func=search.run
 # )
 
-wiki_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+wiki_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())  # type: ignore
 
 
 # --- Fandom tool builder ---

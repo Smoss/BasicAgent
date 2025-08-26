@@ -49,8 +49,10 @@ class DiscordAgentClient(discord.Client):
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
         print("------")
+        assert self.user is not None
 
     async def _create_reply(self, message: discord.Message):
+        assert self.user is not None
         content = message.content
         # Remove mention from content for cleaner prompts
         for mention in message.mentions:
@@ -78,14 +80,12 @@ class DiscordAgentClient(discord.Client):
                     final = messages[-1]
                     try:
                         final_text = (
-                            final.content
-                            if hasattr(final, "content")
-                            else str(final)
+                            final.content if hasattr(final, "content") else str(final)
                         )
                     except Exception:
                         final_text = str(final)
             # Remove think tokens, <think> and </think>, include newlines
-            if final_text and '</think>' in final_text:
+            if final_text and "</think>" in final_text:
                 think_start = final_text.find("<think>")
                 think_end = final_text.find("</think>")
                 final_text = (
@@ -101,10 +101,10 @@ class DiscordAgentClient(discord.Client):
             await message.reply(reply_text)
         else:
             # Split long messages along new lines
-            lines = reply_text.split('\n')
+            lines = reply_text.split("\n")
             chunks = []
             current_chunk = ""
-            
+
             for line in lines:
                 # If adding this line would exceed the limit, start a new chunk
                 if len(current_chunk) + len(line) + 1 > 1900:  # +1 for newline
@@ -116,16 +116,17 @@ class DiscordAgentClient(discord.Client):
                         chunks.append(line[:1900])
                         current_chunk = line[1900:]
                 else:
-                    current_chunk += line + '\n'
-            
+                    current_chunk += line + "\n"
+
             # Add the last chunk if it has content
             if current_chunk.strip():
                 chunks.append(current_chunk.rstrip())
-            
+
             for i, chunk in enumerate(chunks):
                 await message.reply(chunk, mention_author=False)
 
     async def on_message(self, message: discord.Message):
+        assert self.user is not None
         print(f"Message received: {message.content}")
         # Ignore messages from ourselves
         if message.author.id == self.user.id:
@@ -162,7 +163,7 @@ class DiscordBridge:
         self,
         *,
         token: Optional[str] = None,
-        model: Optional[str] = None,
+        model: str = "qwen3:14b",
         mention_only: bool = True,
         allowed_channels: Optional[str] = None,
         context_window: int = 16384,

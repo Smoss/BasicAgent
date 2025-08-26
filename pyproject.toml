@@ -33,4 +33,5 @@ dependencies = [
     "fandom-py>=0.2.1",
     "pyyaml>=6.0.2",
     "types-pyyaml>=6.0.12.20250822",
+    "types-requests>=2.32.4.20250809",
 ]

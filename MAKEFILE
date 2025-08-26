@@ -14,6 +14,10 @@ run-agent:
 	fi
 	uv run python -m scripts.agent_cli run_agent --model=$(if $(model),$(model),gpt-oss:20b)
 
+embed-voice-lines:
+	uv run python -m scripts.embed_voice_lines \
+		--config_path=$(if $(config_path),$(config_path),personas\democracy_officer\config.yaml)
+
 run-discord:
 	uv run python -m scripts.discord_bridge run \
 		--model=$(if $(model),$(model),qwen3:14b) \

@@ -93,13 +93,17 @@ class VoiceLinesHTMLParser(HTMLParser):
             voice_td = self.current_tds[1]
             voice_line = voice_td["text"].strip()
             if voice_line:
-                self.rows.append((self._current_context(), self.current_trigger or "", voice_line))
+                self.rows.append(
+                    (self._current_context(), self.current_trigger or "", voice_line)
+                )
         elif len(self.current_tds) == 2:
             # Continuation row under a rowspan trigger
             voice_td = self.current_tds[0]
             voice_line = voice_td["text"].strip()
             if voice_line:
-                self.rows.append((self._current_context(), self.current_trigger or "", voice_line))
+                self.rows.append(
+                    (self._current_context(), self.current_trigger or "", voice_line)
+                )
 
 
 def parse_voicelines(html_text: str) -> list[tuple[str, str, str]]:
@@ -109,8 +113,12 @@ def parse_voicelines(html_text: str) -> list[tuple[str, str, str]]:
 
 
 def main():
-    src_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "raw_voicelines")
-    out_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "raw_voicelines.csv")
+    src_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "raw_voicelines"
+    )
+    out_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "raw_voicelines.csv"
+    )
 
     with open(src_path, "r", encoding="utf-8") as f:
         html_text = f.read()
@@ -129,5 +137,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

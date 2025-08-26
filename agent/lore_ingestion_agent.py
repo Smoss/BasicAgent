@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
 import fandom  # type: ignore
 import yaml  # type: ignore
@@ -53,8 +53,9 @@ def load_topics(persona_dir: str) -> List[str]:
 
 
 def _slugify(title: str) -> str:
-    title = title.replace("\"", "_")
+    title = title.replace('"', "_")
     return title.replace(" ", "_")
+
 
 def flatten_content(title: str, url: str, section: dict) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
@@ -62,11 +63,15 @@ def flatten_content(title: str, url: str, section: dict) -> list[dict[str, str]]
         out.append({"title": title, "url": url, "raw": section.get("content", "")})
 
     for sub_section in section.get("sections", []):
-        out.extend(flatten_content(f"{title} - {sub_section.get('title', '')}", url, sub_section))
+        out.extend(
+            flatten_content(
+                f"{title} - {sub_section.get('title', '')}", url, sub_section
+            )
+        )
     return out
 
 
-def fetch_fandom_pages(wiki: str, titles: Iterable[str]) -> list[dict]:
+def fetch_fandom_pages(wiki: str, titles: list[str]) -> list[dict]:
     try:
         fandom.set_wiki(wiki)
     except Exception as e:
@@ -83,17 +88,19 @@ def fetch_fandom_pages(wiki: str, titles: Iterable[str]) -> list[dict]:
             print(f"Failed to fetch page '{t}': {e}")
             pass
         if content:
+            assert isinstance(content, dict)
             flattened = flatten_content(t, url, content)
             out.extend(flattened)
     print(f"Fetched {len(out)} sections from {len(titles)} pages")
     return out
 
 
-def summarize_pages(model: str, pages: list[dict], save_dir: Optional[str] = None) -> list[dict[str, str]]:
-
+def summarize_pages(
+    model: str, pages: list[dict], save_dir: Optional[str] = None
+) -> list[dict[str, str]]:
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
-    print('-' * 80)
+    print("-" * 80)
     print(f"Summarizing {len(pages)} pages")
 
     llm = OllamaLLM(model=model, num_gpu=-1, num_ctx=16384, reasoning=False)
@@ -111,12 +118,20 @@ def summarize_pages(model: str, pages: list[dict], save_dir: Optional[str] = Non
 
         prompt = SUMMARIZE_PROMPT.format_messages(title=title, url=url, raw=raw)
         if save_dir:
-            with open(os.path.join(save_dir, f"{_slugify(title)}_prompt.txt"), "w", encoding="utf-8") as f:
+            with open(
+                os.path.join(save_dir, f"{_slugify(title)}_prompt.txt"),
+                "w",
+                encoding="utf-8",
+            ) as f:
                 f.write(str(prompt))
         summary = llm.invoke(prompt)
         text = summary if isinstance(summary, str) else str(summary)
         if save_dir:
-            with open(os.path.join(save_dir, f"{_slugify(title)}_summary.txt"), "w", encoding="utf-8") as f:
+            with open(
+                os.path.join(save_dir, f"{_slugify(title)}_summary.txt"),
+                "w",
+                encoding="utf-8",
+            ) as f:
                 f.write(text)
         summarized.append({"title": title, "url": url, "summary": text})
     return summarized
@@ -150,7 +165,9 @@ def ingest_persona_fandom(
 
     pages = fetch_fandom_pages(cfg.fandom_wiki, topics)
     summarized = summarize_pages(model, pages, save_dir)
-    ids = store_pages(pages=summarized, wiki=cfg.fandom_wiki, character_name=cfg.character_name)
+    ids = store_pages(
+        pages=summarized, wiki=cfg.fandom_wiki, character_name=cfg.character_name
+    )
 
     return {
         "persona": cfg.character_name,
@@ -161,5 +178,3 @@ def ingest_persona_fandom(
         # "saved_dir": saved.get("dir"),
         # "saved_files_count": len(saved.get("files", [])),
     }
-
-

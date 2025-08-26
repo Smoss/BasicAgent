@@ -8,26 +8,51 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
 
-def build_voice_retriever(path: str, character_name: str, max_voice_lines: int = 6, where: Optional[dict[str, Any]] = None) -> BaseRetriever:
+def get_voice_store(character_name: str) -> Chroma:
     embeddings = OllamaEmbeddings(model="nomic-embed-text", num_gpu=-1)
-    store = Chroma(
+    return Chroma(
         collection_name=f"{character_name}_voice_lines",
         persist_directory=f"./chroma_db/{character_name}",
         embedding_function=embeddings,
     )
 
-    docs: List[Document] = []
-    ids: List[str] = []
-    df = pd.read_csv(path)
-    documents = df.apply(lambda row: Document(page_content=row["voice_line"], metadata={'idx': row.index, 'trigger': row["trigger"], 'context': row["context"]}, id=md5(row["voice_line"].encode("utf-8")).hexdigest()), axis=1).tolist()
 
+def populate_voice_lines(path: str, character_name: str):
+    store = get_voice_store(character_name)
+    df = pd.read_csv(path)
+    docs = df.apply(  # type: ignore
+        lambda row: Document(
+            page_content=row["voice_line"],
+            metadata={
+                "trigger": row["trigger"],
+                "context": row["context"],
+            },
+            id=md5(row["voice_line"].encode("utf-8")).hexdigest(),
+        ),
+        axis=1,
+    ).tolist()
+    ids: List[str] = store.get().get("ids", [])  # type: ignore
+
+    # Delete existing voice lines
     if ids:
-        try:
-            store.delete(ids=ids)
-        except Exception:
-            # Best-effort cleanup; proceed to add
-            pass
-        store.add_documents(documents=docs, ids=ids)
+        print(f"Deleting {len(ids)} voice lines")
+        store.delete(ids=ids)
+
+    # Add new voice lines
+    if docs:
+        unique_docs = {doc.id: doc for doc in docs}
+        print(f"Adding {len(unique_docs)} voice lines")
+        store.add_documents(
+            documents=list(unique_docs.values()), ids=list(unique_docs.keys())
+        )  # type: ignore
+
+
+def build_voice_retriever(
+    character_name: str,
+    max_voice_lines: int = 6,
+    where: Optional[dict[str, Any]] = None,
+) -> BaseRetriever:
+    store = get_voice_store(character_name)
 
     kwargs: dict[str, Any] = {"k": max_voice_lines}
     if where:

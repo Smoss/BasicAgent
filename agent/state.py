@@ -1,12 +1,16 @@
 from typing import Annotated
 from langchain_core.messages import BaseMessage
 from langchain_core.documents import Document
-from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from langgraph.graph.message import add_messages
 
-from tools.helldivers.training_manual_types import CampaignPlanet, CurrentStatus, MajorOrder, News
+from tools.helldivers.training_manual_types import (
+    CampaignPlanet,
+    CurrentStatus,
+    MajorOrder,
+    News,
+)
 
 
 class State(TypedDict):

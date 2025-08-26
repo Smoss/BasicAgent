@@ -6,6 +6,8 @@ from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
 
+from agent.types import DocumentIdTitle
+
 
 def _stable_id(*parts: str) -> str:
     joined = "::".join(parts)
@@ -111,33 +113,16 @@ def build_lore_retriever(
 
 def get_all_document_titles(
     *,
-    collection_name: str = "lore",
-    where: Optional[dict[str, Any]] = None,
-) -> list[str]:
+    store: Chroma,
+) -> list[DocumentIdTitle]:
     """Get all document titles from the vector database"""
-    store = get_lore_store(collection_name)
-    
+
     # Get all documents from the collection
-    if where:
-        # If we have a filter, we need to get all documents and filter them
-        # This is a bit inefficient but necessary for filtered collections
-        all_docs = store.get()
-        filtered_titles = []
-        for i, metadata in enumerate(all_docs.get("metadatas", [])):
-            if metadata and all(metadata.get(k) == v for k, v in where.items()):
-                title = metadata.get("title", "Unknown")
-                if title not in filtered_titles:
-                    filtered_titles.append(title)
-        return filtered_titles
-    else:
-        # Get all documents without filter
-        all_docs = store.get()
-        titles = []
-        for metadata in all_docs.get("metadatas", []):
-            if metadata:
-                title = metadata.get("title", "Unknown")
-                if title not in titles:
-                    titles.append(title)
-        return titles
-
-
+    all_docs = store.get()
+    titles: list[DocumentIdTitle] = []
+    for metadata, id in zip(all_docs.get("metadatas", []), all_docs.get("ids", [])):  # type: ignore
+        if metadata:
+            title = metadata.get("title", "Unknown")
+            doc_id = id
+            titles.append(DocumentIdTitle(doc_id=doc_id, doc_title=title))
+    return titles
