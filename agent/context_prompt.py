@@ -26,6 +26,4 @@ def create_context_prompt(
     {additional_context}
 
     Based on the user message, system prompt, and already retrieved documents, select 5-7 additional document titles from the available list that would provide useful context. 
-    Focus on gaps in knowledge or areas that would provide useful context.
-
-    Return a JSON object with a "documents" field containing an array of objects, each with "doc_id" and "doc_title" fields matching the available documents above."""
+    Focus on gaps in knowledge or areas that would provide useful context."""

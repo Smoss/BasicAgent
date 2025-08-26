@@ -45,7 +45,6 @@ def get_major_orders() -> list[MajorOrder]:
         )
         for major_order in major_orders
     ]
-    print(f"Major orders: {major_orders}")
     return major_orders
 
 

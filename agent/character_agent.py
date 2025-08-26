@@ -227,6 +227,7 @@ class SimpleCharacterAgent:
                 response: DocumentsQuery = context_llm.invoke(  # type: ignore
                     [HumanMessage(content=context_prompt)]
                 )
+                print(f"Response: {response}")
                 ids_to_retrieve = [doc.doc_id for doc in response.documents]
                 additional_docs = []
                 try:

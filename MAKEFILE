@@ -26,7 +26,7 @@ run-discord:
 		--voice_lines_path=$(if $(voice_lines_path),$(voice_lines_path),personas\democracy_officer\voice_lines.txt) \
 		--fandom_wiki=$(if $(fandom_wiki),$(fandom_wiki),helldivers) \
 		--max_voice_lines=$(if $(max_voice_lines),$(max_voice_lines),13) \
-		--context_window=$(if $(context_window),$(context_window),14000) \
+		--context_window=$(if $(context_window),$(context_window),16384) \
 		$(if $(allowed_channels),--allowed_channels="$(allowed_channels)",) \
 		$(if $(token),--token="$(token)",) \
 		$(if $(debug),--debug=$(debug),)
