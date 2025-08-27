@@ -18,6 +18,9 @@ def get_campaigns() -> list[CampaignPlanet]:
     )
     campaigns = campaigns_raw.json()
     campaigns = [CampaignPlanet(**campaign) for campaign in campaigns]
+    planets = get_all_planets()
+    for campaign in campaigns:
+        campaign.environmentals = planets[campaign.planetIndex].environmentals
     return campaigns
 
 

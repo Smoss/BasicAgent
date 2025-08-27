@@ -17,7 +17,8 @@ class DiscordAgentClient(discord.Client):
         self,
         *,
         intents: discord.Intents,
-        model: str = "gpt-oss:20b",
+        context_model: str = "qwen3:14b",
+        chat_model: str = "gemma3:12b",
         mention_only: bool = True,
         allowed_channels: Optional[Set[int]] = None,
         context_window: int = 16384,
@@ -28,7 +29,8 @@ class DiscordAgentClient(discord.Client):
         super().__init__(intents=intents)
         persona_config = load_persona_config(config_path)
         self.agent = SimpleCharacterAgent(
-            model=model,
+            context_model=context_model,
+            chat_model=chat_model,
             context_window=context_window,
             persona_config=persona_config,
             max_voice_lines=max_voice_lines,
@@ -155,7 +157,8 @@ class DiscordBridge:
         self,
         *,
         token: Optional[str] = None,
-        model: str = "qwen3:14b",
+        context_model: str = "qwen3:14b",
+        chat_model: str = "gemma3:12b",
         mention_only: bool = True,
         allowed_channels: Optional[str] = None,
         context_window: int = 16384,
@@ -197,7 +200,8 @@ class DiscordBridge:
 
         client = DiscordAgentClient(
             intents=intents,
-            model=model,
+            context_model=context_model,
+            chat_model=chat_model,
             mention_only=mention_only,
             allowed_channels=allowed_set,
             context_window=context_window,

@@ -113,7 +113,7 @@ def build_lore_retriever(
     return store.as_retriever(search_kwargs=kwargs)
 
 
-def get_all_document_titles(
+def get_all_documents(
     *,
     store: Chroma,
 ) -> list[DocumentIdTitle]:

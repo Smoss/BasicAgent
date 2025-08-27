@@ -19,6 +19,9 @@ class Planet(BaseModel):
     biome: Biome | None = None
     environmentals: list[Environmental]
 
+    def __str__(self):
+        return f"{self.name} - {self.sector}"
+
 
 class MajorOrderTask(BaseModel):
     type: int
@@ -36,6 +39,7 @@ class CampaignPlanet(BaseModel):
     majorOrder: bool = False
     biome: Biome | None = None
     expireDateTime: Optional[float] = None
+    environmentals: list[Environmental] = []
 
 
 class MajorOrder(BaseModel):
@@ -81,6 +85,7 @@ def convert_planet_list(active_campaigns: list[CampaignPlanet]) -> str:
             if campaign.biome
             else ""
         )
+        current_planets += f"The planet's environmentals are:\n{'\n'.join([environmental.name for environmental in campaign.environmentals])}\n"
     return current_planets
 
 

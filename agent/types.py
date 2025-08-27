@@ -6,13 +6,15 @@ class DocumentIdTitle(BaseModel):
     This is a document ID and title pair. It is meant allow the retrieval of a document from a Chroma database.
     """
 
-    doc_id: str = Field(description="The ID of the document to retrieve")
+    doc_id: str = Field(
+        description="The ID of the document to retrieve, typically an md5 hash, should not include the document title"
+    )
     doc_title: str = Field(description="The title of the document to retrieve")
 
 
 class DocumentsQuery(BaseModel):
     """
-    This is a query to the context retrieval agent. It is used to retrieve a list of documents from a Chroma database.
+    This is a query from the context retrieval agent. It is used to retrieve a list of documents from a Chroma database.
     """
 
     documents: list[DocumentIdTitle] = Field(

@@ -26,28 +26,31 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 import random
 from tools.voice_rag import build_voice_retriever
-from tools.lore_db import build_lore_retriever, get_all_document_titles, get_lore_store
+from tools.lore_db import build_lore_retriever, get_all_documents, get_lore_store
 from langchain_core.documents import Document
 
 from utils.persona_config import PersonaConfig
 
 
 class SimpleCharacterAgent:
-    model: str
+    context_model: str
+    chat_model: str
 
     def __init__(
         self,
         *,
-        model: str = "gpt-oss:20b",
+        context_model: str = "gpt-oss:20b",
+        chat_model: str = "gpt-oss:20b",
         context_window: int = 8192,
         debug: bool = False,
-        max_voice_lines: int = 6,
-        lore_search_k: int = 8,
+        max_voice_lines: int = 5,
+        lore_search_k: int = 5,
         additional_context_k: int = 10,
         persona_config: PersonaConfig,
     ):
-        print(f"Initializing agent with model: {model}")
-        self.model = model
+        print(f"Initializing agent with model: {context_model}")
+        self.context_model = context_model
+        self.chat_model = chat_model
         self.context_window = context_window
         self.debug = debug
         self.system_prompt_text: str
@@ -64,11 +67,16 @@ class SimpleCharacterAgent:
             search_k=self.lore_search_k,
         )
 
+        self.planet_store = get_lore_store(f"{self.character_name}_planets")
+
         self.lore_store = get_lore_store(f"{self.character_name}_lore")
 
         # Get all available document titles for context retrieval
-        self.all_available_titles = get_all_document_titles(
+        self.all_available_documents = get_all_documents(
             store=self.lore_store,
+        )
+        self.all_available_planets = get_all_documents(
+            store=self.planet_store,
         )
         self.additional_context_k = additional_context_k
 
@@ -83,7 +91,7 @@ class SimpleCharacterAgent:
     def build_graph(self) -> CompiledStateGraph:
         # Core tools plus Discord toolkit (read/send messages)
         llm: Runnable[LanguageModelInput, BaseMessage] = ChatOllama(
-            model=self.model,
+            model=self.chat_model,
             temperature=0.6,
             num_gpu=-1,
             num_ctx=self.context_window,
@@ -92,7 +100,7 @@ class SimpleCharacterAgent:
 
         # Create a context LLM to decide what additional documents to retrieve
         context_llm = ChatOllama(
-            model=self.model,
+            model=self.context_model,
             temperature=0.3,
             num_gpu=-1,
             num_ctx=self.context_window,
@@ -218,7 +226,7 @@ class SimpleCharacterAgent:
                 user_text,
                 already_retrieved_titles,
                 already_retrieved_content,
-                self.all_available_titles,
+                self.all_available_documents,
                 additional_context,
             )
 
@@ -226,13 +234,13 @@ class SimpleCharacterAgent:
                 response: DocumentsQuery = context_llm.invoke(  # type: ignore
                     [HumanMessage(content=context_prompt)]
                 )
-                print(f"Response: {response}")
                 ids_to_retrieve = [doc.doc_id for doc in response.documents]
                 additional_docs = []
                 try:
                     if len(ids_to_retrieve) > 0:
-                        docs = self.lore_store.get_by_ids(ids_to_retrieve)
-                        additional_docs.extend(docs)
+                        additional_docs.extend(
+                            self.lore_store.get_by_ids(ids_to_retrieve)
+                        )
                 except Exception as e:
                     print(
                         f"Warning: Context retrieval failed for IDs '{ids_to_retrieve}': {e}"
@@ -256,6 +264,8 @@ class SimpleCharacterAgent:
             except Exception as e:
                 print(f"Warning: Context retrieval failed: {e}")
                 return {"retrieved_context_docs": []}
+
+        # def check_planets
 
         def chatbot(state: State) -> State:
             """Main chatbot node that uses all retrieved documents"""
@@ -307,9 +317,11 @@ class SimpleCharacterAgent:
                 current_planets = (
                     "When describing planets avoid repeating the same information.\n"
                 )
-                "Don't quote exact percentages, use evocative language.\nProvide a description of the planet's biome\n"
+                "Don't quote exact percentages, use evocative language.\n"
+                "Provide a description of the planet's biome\n"
                 "Don't refer to planets not mentioned here unless they are explicitly mentioned in the conversation, Super Earth is the exception to this rule.\n"
                 "Please keep track of which faction is fighting on which planet.\n"
+                "If the player asks for suggetsions on where to deploy or for current events, only suggest planets that are currently being contested.\n"
                 "The following planets are currently being contested:\n"
                 current_planets += convert_planet_list(active_campaigns)
                 # print(f"Current planets: {current_planets}")
