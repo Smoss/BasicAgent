@@ -25,7 +25,7 @@ run-discord:
 		--mention_only=$(if $(mention_only),$(mention_only),True) \
 		--config_path=$(if $(config_path),$(config_path),personas\democracy_officer) \
 		--max_voice_lines=$(if $(max_voice_lines),$(max_voice_lines),13) \
-		--context_window=$(if $(context_window),$(context_window),16384) \
+		--context_window=$(if $(context_window),$(context_window),20000) \
 		$(if $(allowed_channels),--allowed_channels="$(allowed_channels)",) \
 		$(if $(token),--token="$(token)",) \
 		$(if $(debug),--debug=$(debug),)

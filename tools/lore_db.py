@@ -2,7 +2,7 @@ import os
 import hashlib
 from typing import Any, Iterable, Optional
 
-from langchain.tools import Tool, tool
+from langchain.tools import Tool
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
@@ -130,15 +130,14 @@ def get_all_documents(
             titles.append(DocumentIdTitle(doc_id=doc_id, doc_title=title))
     return titles
 
+
 def build_lore_retriever_tool(
     *,
     store: Chroma,
     collection_name: str = "lore",
 ) -> Tool:
-
     def _retrieve_lore_by_ids(ids: list[str]) -> list[Document]:
         return store.get_by_ids(ids)
-    
 
     return Tool(
         name=f"retrieve_{collection_name}_lore",

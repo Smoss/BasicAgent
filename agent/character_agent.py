@@ -14,7 +14,6 @@ from agent.helldivers.nodes import (
     route_lore_retrieval,
 )
 from agent.state import State
-from agent.types import DocumentsQuery
 from tools.helldivers.training_manual_types import (
     convert_current_event_list,
     convert_major_order_list,
@@ -28,7 +27,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 import random
 from tools.voice_rag import build_voice_retriever
-from tools.lore_db import build_lore_retriever, build_lore_retriever_tool, get_all_documents, get_lore_store
+from tools.lore_db import (
+    build_lore_retriever,
+    build_lore_retriever_tool,
+    get_all_documents,
+    get_lore_store,
+)
 from langchain_core.documents import Document
 
 from utils.persona_config import PersonaConfig
@@ -99,28 +103,33 @@ class SimpleCharacterAgent:
             num_gpu=-1,
             num_ctx=self.context_window,
             keep_alive=True,
+            num_predict=4096,
         )
 
-        context_retriever_tool = build_lore_retriever_tool(
-            store=self.lore_store,
-            collection_name=f"context",
-        )
+        # context_retriever_tool = build_lore_retriever_tool(
+        #     store=self.lore_store,
+        #     collection_name="context",
+        # )
         planet_retriever_tool = build_lore_retriever_tool(
             store=self.planet_store,
-            collection_name=f"planet",
+            collection_name="planet",
         )
 
-        lore_tools = [context_retriever_tool, planet_retriever_tool]
+        planet_tools = {
+            # "retrieve_context_lore": context_retriever_tool,
+            "retrieve_planet_lore": planet_retriever_tool,
+        }
 
-        lore_retrieval_node = LoreRetrievalNode(lore_tools)
-        
+        planet_retrieval_node = LoreRetrievalNode(planet_tools)
+
         # Create a context LLM to decide what additional documents to retrieve
         context_llm = ChatOllama(
             model=self.context_model,
             temperature=0.3,
             num_gpu=-1,
             num_ctx=self.context_window,
-        ).bind_tools(lore_tools)
+            num_predict=4096,
+        ).bind_tools(list(planet_tools.values()))
 
         def retrieve_lore(state: State) -> State:
             """Step 1: Retrieve lore using vector search and store in state"""
@@ -241,33 +250,11 @@ class SimpleCharacterAgent:
             )
 
             try:
-                # response = 
-                # ids_to_retrieve = [doc.doc_id for doc in response.documents]
-                # additional_docs = []
-                # try:
-                #     if len(ids_to_retrieve) > 0:
-                #         additional_docs.extend(
-                #             self.lore_store.get_by_ids(ids_to_retrieve)
-                #         )
-                # except Exception as e:
-                #     print(
-                #         f"Warning: Context retrieval failed for IDs '{ids_to_retrieve}': {e}"
-                #     )
-
-                # # Remove duplicates based on document ID
-                # seen_ids = set()
-                # unique_docs = []
-                # for doc in additional_docs:
-                #     doc_id = getattr(doc, "id", None) or doc.page_content[:50]
-                #     if doc_id not in seen_ids:
-                #         seen_ids.add(doc_id)
-                #         unique_docs.append(doc)
-
-                # # Limit to 5 additional documents
-                # unique_docs = unique_docs[: self.additional_context_k]
-                return {"tool_messages": [context_llm.invoke(
-                    [HumanMessage(content=context_prompt)]
-                )]}
+                return {
+                    "tool_messages": [
+                        context_llm.invoke([HumanMessage(content=context_prompt)])
+                    ]
+                }
 
             except Exception as e:
                 print(f"Warning: Context retrieval failed: {e}")
@@ -314,7 +301,7 @@ class SimpleCharacterAgent:
                     + "\n- ".join(style_lines)
                 )
                 system_messages.append(style_msg)
-            
+
             retrieved_planet_lore = state.get("retrieved_planet_lore", [])
             if retrieved_planet_lore:
                 planet_lines = [d.page_content for d in retrieved_planet_lore]
@@ -380,7 +367,7 @@ class SimpleCharacterAgent:
         graph_builder.add_node("retrieve_major_orders", retrieve_major_orders)  # type: ignore
         graph_builder.add_node("retrieve_current_status", retrieve_current_status)  # type: ignore
         graph_builder.add_node("retrieve_news", retrieve_news)  # type: ignore
-        graph_builder.add_node("lore_retrieval", lore_retrieval_node)
+        graph_builder.add_node("lore_retrieval", planet_retrieval_node)
         graph_builder.add_node("chatbot", chatbot)
 
         # Add edges
