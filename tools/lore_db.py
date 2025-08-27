@@ -2,6 +2,7 @@ import os
 import hashlib
 from typing import Any, Iterable, Optional
 
+from langchain.tools import Tool, tool
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
@@ -128,3 +129,19 @@ def get_all_documents(
             doc_id = id
             titles.append(DocumentIdTitle(doc_id=doc_id, doc_title=title))
     return titles
+
+def build_lore_retriever_tool(
+    *,
+    store: Chroma,
+    collection_name: str = "lore",
+) -> Tool:
+
+    def _retrieve_lore_by_ids(ids: list[str]) -> list[Document]:
+        return store.get_by_ids(ids)
+    
+
+    return Tool(
+        name=f"retrieve_{collection_name}_lore",
+        description=f"Retrieve {collection_name} documents from the vector database using the list of ids provided. Ids are of the form md5 hashes. The ids are provided in the form of a list of strings.",
+        func=_retrieve_lore_by_ids,
+    )

@@ -6,10 +6,12 @@ from langgraph.graph.state import CompiledStateGraph, Runnable
 
 from agent.context_prompt import create_context_prompt
 from agent.helldivers.nodes import (
+    LoreRetrievalNode,
     retrieve_campaigns,
     retrieve_current_status,
     retrieve_major_orders,
     retrieve_news,
+    route_lore_retrieval,
 )
 from agent.state import State
 from agent.types import DocumentsQuery
@@ -26,7 +28,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 import random
 from tools.voice_rag import build_voice_retriever
-from tools.lore_db import build_lore_retriever, get_all_documents, get_lore_store
+from tools.lore_db import build_lore_retriever, build_lore_retriever_tool, get_all_documents, get_lore_store
 from langchain_core.documents import Document
 
 from utils.persona_config import PersonaConfig
@@ -48,7 +50,8 @@ class SimpleCharacterAgent:
         additional_context_k: int = 10,
         persona_config: PersonaConfig,
     ):
-        print(f"Initializing agent with model: {context_model}")
+        print(f"Initializing agent with context model: {context_model}")
+        print(f"Initializing agent with chat model: {chat_model}")
         self.context_model = context_model
         self.chat_model = chat_model
         self.context_window = context_window
@@ -98,13 +101,26 @@ class SimpleCharacterAgent:
             keep_alive=True,
         )
 
+        context_retriever_tool = build_lore_retriever_tool(
+            store=self.lore_store,
+            collection_name=f"context",
+        )
+        planet_retriever_tool = build_lore_retriever_tool(
+            store=self.planet_store,
+            collection_name=f"planet",
+        )
+
+        lore_tools = [context_retriever_tool, planet_retriever_tool]
+
+        lore_retrieval_node = LoreRetrievalNode(lore_tools)
+        
         # Create a context LLM to decide what additional documents to retrieve
         context_llm = ChatOllama(
             model=self.context_model,
             temperature=0.3,
             num_gpu=-1,
             num_ctx=self.context_window,
-        ).with_structured_output(DocumentsQuery)
+        ).bind_tools(lore_tools)
 
         def retrieve_lore(state: State) -> State:
             """Step 1: Retrieve lore using vector search and store in state"""
@@ -125,7 +141,6 @@ class SimpleCharacterAgent:
 
             try:
                 docs = self.lore_retriever.invoke(user_text) or []
-                print(f"Retrieved {len(docs)} lore documents")
                 return {"retrieved_lore_docs": docs}
             except Exception as e:
                 print(f"Warning: Lore retrieval failed: {e}")
@@ -150,9 +165,6 @@ class SimpleCharacterAgent:
             if self.voice_retriever:
                 try:
                     style_docs = self.voice_retriever.invoke(user_text or "")
-                    print(
-                        f"Retrieved {len(style_docs)} style documents via semantic search"
-                    )
                 except Exception as e:
                     print(f"Warning: Failed to select voice lines from {e}")
 
@@ -167,7 +179,6 @@ class SimpleCharacterAgent:
                     Document(page_content=pick, metadata={"source": "fallback"})
                     for pick in picks
                 ]
-                print(f"Retrieved {len(style_docs)} style documents via fallback")
 
             return {"retrieved_style_docs": style_docs}
 
@@ -197,8 +208,6 @@ class SimpleCharacterAgent:
             already_retrieved_content = [
                 doc.page_content for doc in retrieved_lore_docs
             ]
-            print("--------------------------------")
-            print(f"Already retrieved {len(already_retrieved_titles)} documents")
 
             current_planets = state.get("active_campaigns", [])
             current_major_orders = state.get("active_major_orders", [])
@@ -227,43 +236,42 @@ class SimpleCharacterAgent:
                 already_retrieved_titles,
                 already_retrieved_content,
                 self.all_available_documents,
+                self.all_available_planets,
                 additional_context,
             )
 
             try:
-                response: DocumentsQuery = context_llm.invoke(  # type: ignore
+                # response = 
+                # ids_to_retrieve = [doc.doc_id for doc in response.documents]
+                # additional_docs = []
+                # try:
+                #     if len(ids_to_retrieve) > 0:
+                #         additional_docs.extend(
+                #             self.lore_store.get_by_ids(ids_to_retrieve)
+                #         )
+                # except Exception as e:
+                #     print(
+                #         f"Warning: Context retrieval failed for IDs '{ids_to_retrieve}': {e}"
+                #     )
+
+                # # Remove duplicates based on document ID
+                # seen_ids = set()
+                # unique_docs = []
+                # for doc in additional_docs:
+                #     doc_id = getattr(doc, "id", None) or doc.page_content[:50]
+                #     if doc_id not in seen_ids:
+                #         seen_ids.add(doc_id)
+                #         unique_docs.append(doc)
+
+                # # Limit to 5 additional documents
+                # unique_docs = unique_docs[: self.additional_context_k]
+                return {"tool_messages": [context_llm.invoke(
                     [HumanMessage(content=context_prompt)]
-                )
-                ids_to_retrieve = [doc.doc_id for doc in response.documents]
-                additional_docs = []
-                try:
-                    if len(ids_to_retrieve) > 0:
-                        additional_docs.extend(
-                            self.lore_store.get_by_ids(ids_to_retrieve)
-                        )
-                except Exception as e:
-                    print(
-                        f"Warning: Context retrieval failed for IDs '{ids_to_retrieve}': {e}"
-                    )
-
-                # Remove duplicates based on document ID
-                seen_ids = set()
-                unique_docs = []
-                for doc in additional_docs:
-                    doc_id = getattr(doc, "id", None) or doc.page_content[:50]
-                    if doc_id not in seen_ids:
-                        seen_ids.add(doc_id)
-                        unique_docs.append(doc)
-
-                # Limit to 5 additional documents
-                unique_docs = unique_docs[: self.additional_context_k]
-                print(f"Retrieved {len(unique_docs)} additional context documents")
-                print("--------------------------------")
-                return {"retrieved_context_docs": unique_docs}
+                )]}
 
             except Exception as e:
                 print(f"Warning: Context retrieval failed: {e}")
-                return {"retrieved_context_docs": []}
+                return {"tool_messages": []}
 
         # def check_planets
 
@@ -278,7 +286,6 @@ class SimpleCharacterAgent:
             current_date_prompt = SystemMessage(
                 content=f"The current date is {datetime.datetime.now().strftime('%B %d')}, {current_in_universe_year}"
             )
-            print(f"Current date: {current_date_prompt}")
             system_messages.append(current_date_prompt)
             # Add lore context
             if retrieved_lore_docs or retrieved_context_docs:
@@ -297,9 +304,6 @@ class SimpleCharacterAgent:
                         content="Relevant lore (use for context, do not quote verbatim unless asked):\n"
                         + "\n".join(lines)
                     )
-                    print(
-                        f"Found {len(lines)} lore notes, with total length of {sum([len(line) for line in lines])}, titles: {', '.join([line.split(':')[0] for line in lines])}"
-                    )
                     system_messages.append(lore_msg)
 
             # Add style context
@@ -309,9 +313,16 @@ class SimpleCharacterAgent:
                     content="Style exemplars (tone and cadence):\n- "
                     + "\n- ".join(style_lines)
                 )
-                print(f"Selected {len(style_lines)} voice lines")
-                print(f"Voice lines: {'\n'.join(style_lines)}")
                 system_messages.append(style_msg)
+            
+            retrieved_planet_lore = state.get("retrieved_planet_lore", [])
+            if retrieved_planet_lore:
+                planet_lines = [d.page_content for d in retrieved_planet_lore]
+                planet_msg = SystemMessage(
+                    content="Planet lore (use for context, do not quote verbatim unless asked):\n- "
+                    + "\n- ".join(planet_lines)
+                )
+                system_messages.append(planet_msg)
 
             if active_campaigns := state.get("active_campaigns"):
                 current_planets = (
@@ -324,7 +335,6 @@ class SimpleCharacterAgent:
                 "If the player asks for suggetsions on where to deploy or for current events, only suggest planets that are currently being contested.\n"
                 "The following planets are currently being contested:\n"
                 current_planets += convert_planet_list(active_campaigns)
-                # print(f"Current planets: {current_planets}")
                 campaign_msg = SystemMessage(content=current_planets)
                 system_messages.append(campaign_msg)
 
@@ -335,7 +345,6 @@ class SimpleCharacterAgent:
                 "Only use the first 3 significant digits of the current value and target value.\n"
                 "The following major orders are currently active:\n"
                 current_major_orders += convert_major_order_list(active_major_orders)
-                # print(f"Current major orders: {current_major_orders}")
                 major_order_msg = SystemMessage(content=current_major_orders)
                 system_messages.append(major_order_msg)
 
@@ -357,10 +366,8 @@ class SimpleCharacterAgent:
             # Add system prompt
             if self.system_prompt_text:
                 system_messages.append(SystemMessage(content=self.system_prompt_text))
-            # print(f"System messages: {system_messages}")
 
             message = llm.invoke(system_messages + messages)  # type: ignore
-            print(f"Message Usage: {message.usage_metadata}")  # type: ignore
             return {"messages": [message]}
 
         graph_builder = StateGraph(State)
@@ -373,6 +380,7 @@ class SimpleCharacterAgent:
         graph_builder.add_node("retrieve_major_orders", retrieve_major_orders)  # type: ignore
         graph_builder.add_node("retrieve_current_status", retrieve_current_status)  # type: ignore
         graph_builder.add_node("retrieve_news", retrieve_news)  # type: ignore
+        graph_builder.add_node("lore_retrieval", lore_retrieval_node)
         graph_builder.add_node("chatbot", chatbot)
 
         # Add edges
@@ -383,7 +391,16 @@ class SimpleCharacterAgent:
         graph_builder.add_edge("retrieve_major_orders", "retrieve_current_status")
         graph_builder.add_edge("retrieve_current_status", "retrieve_news")
         graph_builder.add_edge("retrieve_news", "retrieve_context")
-        graph_builder.add_edge("retrieve_context", "chatbot")
+        # graph_builder.add_edge("retrieve_context", "chatbot")
+        graph_builder.add_conditional_edges(
+            "retrieve_context",
+            route_lore_retrieval,
+            {
+                "lore_retrieval": "lore_retrieval",
+                "chatbot": "chatbot",
+            },
+        )
+        graph_builder.add_edge("lore_retrieval", "chatbot")
 
         memory = InMemorySaver()
         graph = graph_builder.compile(checkpointer=memory)
@@ -406,7 +423,6 @@ class SimpleCharacterAgent:
         graph = self.build_graph()
         while True:
             try:
-                print("--------------------------------")
                 user_input = input("User: ")
                 if user_input.lower() == "\\q":
                     self.stream_graph_updates(graph, "Goodbye!")
@@ -417,7 +433,6 @@ class SimpleCharacterAgent:
                 break
             except Exception as e:
                 print(e)
-                # fallback to print the error4
                 user_input = f"What do you think of the error?\n{e}"
                 self.stream_graph_updates(graph, user_input)
                 break

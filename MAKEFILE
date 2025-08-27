@@ -20,7 +20,7 @@ embed-voice-lines:
 
 run-discord:
 	uv run python -m scripts.discord_bridge run \
-		--context_model=$(if $(context_model),$(context_model),qwen3:14b) \
+		--context_model=$(if $(context_model),$(context_model),qwen3:8b) \
 		--chat_model=$(if $(chat_model),$(chat_model),gemma3:12b) \
 		--mention_only=$(if $(mention_only),$(mention_only),True) \
 		--config_path=$(if $(config_path),$(config_path),personas\democracy_officer) \

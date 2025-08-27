@@ -11,6 +11,9 @@ class DocumentIdTitle(BaseModel):
     )
     doc_title: str = Field(description="The title of the document to retrieve")
 
+    def __str__(self):
+        return f"{{Document Title: {self.doc_title}\nID: {self.doc_id}}}"
+
 
 class DocumentsQuery(BaseModel):
     """

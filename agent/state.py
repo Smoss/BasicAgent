@@ -19,7 +19,9 @@ class State(TypedDict):
     retrieved_lore_docs: list[Document]  # Documents from initial vector search
     retrieved_style_docs: list[Document]  # Style/voice line documents
     retrieved_context_docs: list[Document]  # Additional context documents
+    retrieved_planet_lore: list[Document]  # Planet lore documents
     active_campaigns: list[CampaignPlanet]  # Active campaigns
     active_major_orders: list[MajorOrder]  # Active major orders
     past_week_news: list[News]  # News from the past week
     current_status: CurrentStatus  # Current status, including time and current events
+    tool_messages: Annotated[list[BaseMessage], add_messages]

@@ -1,31 +1,39 @@
 from agent.types import DocumentIdTitle
 
 
+    # "Additional context:
+    # {additional_context}
+
+    # Please provide any required tool calls to retrieve the additional documents and planets. Use the ids from the DocumentIdTitle objects to retrieve the documents and planets."
+
+    
+
+    # Already retrieved documents:
+    # {"\n".join([f"- {title}: {content}" for title, content in zip(already_retrieved_titles, already_retrieved_content)])}
+
+    
+
+    # All available documents in the retrieve_context_lore database:
+    # {"\n".join([str(doc) for doc in all_available_documents])}
 def create_context_prompt(
     system_prompt_text: str,
     user_text: str,
     already_retrieved_titles: list[str],
     already_retrieved_content: list[str],
-    all_available_titles: list[DocumentIdTitle],
+    all_available_documents: list[DocumentIdTitle],
+    all_available_planets: list[DocumentIdTitle],
     additional_context: str,
-    num_documents: int = 5,
 ) -> str:
     return f"""You are a context retrieval assistant for a character AI system.
 
     System prompt for the character:
     {system_prompt_text}
 
-    User message: {user_text}
-
-    Already retrieved documents:
-    {"\n".join([f"- {title}: {content}" for title, content in zip(already_retrieved_titles, already_retrieved_content)])}
-
-    All available documents in the database:
-    {"\n".join([f"- {title.doc_title} (ID: {title.doc_id})" for title in all_available_titles])}
-
-    Additional context:
+    All available planets in the retrieve_planet_lore database:
+    {"\n".join([str(planet) for planet in all_available_planets])}
+    "Additional context:
     {additional_context}
 
-    Based on the user message, system prompt, and already retrieved documents, select at most {num_documents} additional documents from the available list that would provide useful context.
-    Be sure to properly format the output as a list of DocumentIdTitle objects. Keep the document IDs as md5 hashes.
-    Focus on gaps in knowledge or areas that would provide useful context."""
+    User message: {user_text}
+    You must make a tool call to retrieve the additional planet information. The argument to the tool call is a list of ids, even if there is only one.
+    """

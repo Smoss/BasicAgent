@@ -78,14 +78,15 @@ def convert_planet_list(active_campaigns: list[CampaignPlanet]) -> str:
             if campaign.defense
             else "being defended against an assault by"
         )
-        reclaimed = "reclaimed" if not campaign.defense else "invaded"
+        reclaimed = "invaded" if campaign.defense else "reclaimed"
         current_planets += f"{campaign.name} is {direction} {campaign.faction} with {round(campaign.players, -2):,} players. The planet is {campaign.percentage}% {reclaimed}.\n"
         current_planets += (
             f"The planet's biome is a {campaign.biome.slug}. Described as: {campaign.biome.description}"
             if campaign.biome
             else ""
         )
-        current_planets += f"The planet's environmentals are:\n{'\n'.join([environmental.name for environmental in campaign.environmentals])}\n"
+        if campaign.environmentals:
+            current_planets += f"The planet's environmentals are:\n{'\n'.join([environmental.name for environmental in campaign.environmentals])}\n"
     return current_planets
 
 
