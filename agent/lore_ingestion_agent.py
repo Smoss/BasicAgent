@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List, Optional
 
@@ -7,6 +8,8 @@ from langchain_ollama.llms import OllamaLLM
 
 from tools.lore_db import build_lore_doc, upsert_lore_documents
 from utils.persona_config import load_persona_config
+
+logger = logging.getLogger(__name__)
 
 
 SUMMARIZE_PROMPT = ChatPromptTemplate.from_template(
@@ -64,13 +67,13 @@ def fetch_fandom_pages(wiki: str, titles: list[str]) -> list[dict]:
             content = fandom.page(t).content
         except Exception as e:
             # Leave raw empty if not found
-            print(f"Failed to fetch page '{t}': {e}")
+            logger.warning("Failed to fetch page '%s': %s", t, e)
             pass
         if content:
             assert isinstance(content, dict)
             flattened = flatten_content(t, url, content)
             out.extend(flattened)
-    print(f"Fetched {len(out)} sections from {len(titles)} pages")
+    logger.info("Fetched %d sections from %d pages", len(out), len(titles))
     return out
 
 
@@ -79,13 +82,12 @@ def summarize_pages(
 ) -> list[dict[str, str]]:
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
-    print("-" * 80)
-    print(f"Summarizing {len(pages)} pages")
+    logger.info("Summarizing %d pages", len(pages))
 
     llm = OllamaLLM(model=model, num_gpu=-1, num_ctx=16384, reasoning=False)
-    print(f"Using model: {model}")
-    print(f"Using save directory: {save_dir}")
-    print(f"Using prompt template: {SUMMARIZE_PROMPT}")
+    logger.info("Using model: %s", model)
+    logger.debug("Using save directory: %s", save_dir)
+    logger.debug("Using prompt template: %s", SUMMARIZE_PROMPT)
     summarized: list[dict] = []
     for p in pages:
         title = p.get("title", "")
@@ -154,6 +156,4 @@ def ingest_persona_fandom(
         "topics": topics,
         "stored_ids": ids,
         "count": len(ids),
-        # "saved_dir": saved.get("dir"),
-        # "saved_files_count": len(saved.get("files", [])),
     }

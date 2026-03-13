@@ -1,5 +1,6 @@
 import asyncio
 from hashlib import md5
+import logging
 import os
 from typing import List, Optional
 
@@ -11,6 +12,8 @@ from agent.types import WikiPage
 from tools.helldivers.training_manual_api import get_all_planets
 from tools.lore_db import build_lore_doc, upsert_lore_documents
 from utils.persona_config import load_persona_config
+
+logger = logging.getLogger(__name__)
 
 MAX_CHARACTERS = 4000
 
@@ -38,14 +41,14 @@ async def fetch_planet_page(wiki: str, planet_name: str) -> WikiPage:
     url = f"https://{wiki}.fandom.com/wiki/{_slugify(planet_name)}"
     content = ""
     try:
-        print(f"Fetching page '{planet_name}' from {wiki}")
+        logger.info("Fetching page '%s' from %s", planet_name, wiki)
         fandom.set_wiki(wiki)
         page = fandom.page(planet_name)
         content = page.plain_text
     except Exception as e:
-        print(f"Failed to fetch page '{planet_name}': {e}")
+        logger.warning("Failed to fetch page '%s': %s", planet_name, e)
         return WikiPage(title=planet_name, url=url, raw="")
-    print(f"Fetched page '{planet_name}' from {wiki}")
+    logger.info("Fetched page '%s' from %s", planet_name, wiki)
     return WikiPage(title=planet_name, url=url, raw=content)
 
 
@@ -59,7 +62,9 @@ async def fetch_planet_pages(wiki: str, planet_names: List[str]) -> List[WikiPag
     pages = await asyncio.gather(
         *[fetch_planet_page(wiki, planet_name) for planet_name in planet_names]
     )
-    print(f"Fetched {len(pages)} planet pages from {len(planet_names)} planet names")
+    logger.info(
+        "Fetched %d planet pages from %d planet names", len(pages), len(planet_names)
+    )
     return pages
 
 
@@ -68,13 +73,12 @@ def summarize_pages(
 ) -> List[WikiPage]:
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
-    print("-" * 80)
-    print(f"Summarizing {len(pages)} planet pages")
+    logger.info("Summarizing %d planet pages", len(pages))
 
     llm = OllamaLLM(model=model, num_gpu=-1, num_ctx=16384, reasoning=False)
-    print(f"Using model: {model}")
-    print(f"Using save directory: {save_dir}")
-    print(f"Using prompt template: {SUMMARIZE_PROMPT}")
+    logger.info("Using model: %s", model)
+    logger.debug("Using save directory: %s", save_dir)
+    logger.debug("Using prompt template: %s", SUMMARIZE_PROMPT)
 
     summarized: List[WikiPage] = []
     for p in pages:
@@ -139,8 +143,8 @@ def ingest_planet_lore(
     planets = get_all_planets()
     planet_names = [planet.name.replace(" ", "_") for planet in planets]
 
-    print(f"Found {len(planet_names)} planets to ingest")
-    print(f"Planet names: {planet_names[:5]}...")  # Show first 5 as preview
+    logger.info("Found %d planets to ingest", len(planet_names))
+    logger.info("Planet names: %s...", planet_names[:5])
 
     # Fetch Fandom pages for each planet
     pages = asyncio.run(fetch_planet_pages(cfg.fandom_wiki, planet_names))

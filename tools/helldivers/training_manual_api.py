@@ -1,6 +1,9 @@
+import logging
+
 from agent.state import State
 import requests
 
+from config import HELLDIVERS_API_BASE_URL
 from tools.helldivers.training_manual_types import (
     CampaignPlanet,
     CurrentStatus,
@@ -10,12 +13,12 @@ from tools.helldivers.training_manual_types import (
     Planet,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def get_campaigns() -> list[CampaignPlanet]:
     """Get a list of all active planets that are currently being contested"""
-    campaigns_raw = requests.get(
-        "https://helldiverstrainingmanual.com/api/v1/war/campaign"
-    )
+    campaigns_raw = requests.get(f"{HELLDIVERS_API_BASE_URL}war/campaign")
     campaigns = campaigns_raw.json()
     campaigns = [CampaignPlanet(**campaign) for campaign in campaigns]
     planets = get_all_planets()
@@ -26,9 +29,7 @@ def get_campaigns() -> list[CampaignPlanet]:
 
 def get_major_orders() -> list[MajorOrder]:
     """Get a list of all major orders that are currently active"""
-    major_orders_raw = requests.get(
-        "https://helldiverstrainingmanual.com/api/v1/war/major-orders"
-    )
+    major_orders_raw = requests.get(f"{HELLDIVERS_API_BASE_URL}war/major-orders")
     major_orders = major_orders_raw.json()
     major_orders = [
         MajorOrder(
@@ -54,9 +55,7 @@ def get_major_orders() -> list[MajorOrder]:
 
 def get_current_status() -> CurrentStatus:
     """Get the current status, including time and current events"""
-    current_status_raw = requests.get(
-        "https://helldiverstrainingmanual.com/api/v1/war/status"
-    )
+    current_status_raw = requests.get(f"{HELLDIVERS_API_BASE_URL}war/status")
     current_status = current_status_raw.json()
     current_status = CurrentStatus(**current_status)
     return current_status
@@ -67,9 +66,8 @@ def get_past_week_news(state: State) -> list[News]:
     news_dict = {}
     for i in range(7):
         daily_news_raw = requests.get(
-            f"https://helldiverstrainingmanual.com/api/v1/war/news?from={state['current_status'].time - i * 86400}"
+            f"{HELLDIVERS_API_BASE_URL}war/news?from={state['current_status'].time - i * 86400}"
         ).json()
-        # daily_news_raw = daily_news_response.json()
         daily_news = [News(**news) for news in daily_news_raw]
         for news in daily_news:
             news_dict[news.id] = news
@@ -80,9 +78,8 @@ def get_past_week_news(state: State) -> list[News]:
 
 def get_all_planets() -> list[Planet]:
     """Get a list of all planets in the game"""
-    planets_raw = requests.get("https://helldiverstrainingmanual.com/api/v1/planets")
+    planets_raw = requests.get(f"{HELLDIVERS_API_BASE_URL}planets")
     planets = planets_raw.json()
-    print(f"Found {len(planets)} planets")
-    # print(f"Planets: {planets}...")
+    logger.info("Found %d planets", len(planets))
     planets = [Planet(**planet) for planet in planets.values()]
     return planets

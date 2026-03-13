@@ -1,3 +1,4 @@
+import logging
 import os
 import asyncio
 from typing import Optional, Set
@@ -7,9 +8,17 @@ from dotenv import load_dotenv
 import fire  # type: ignore
 from agent.character_agent import SimpleCharacterAgent
 from utils.persona_config import load_persona_config
+from config import DISCORD_MESSAGE_LIMIT
+from utils.text import chunk_message
 
 
 load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 class DiscordAgentClient(discord.Client):
@@ -41,8 +50,7 @@ class DiscordAgentClient(discord.Client):
         self.allowed_channels = allowed_channels or set()
 
     async def on_ready(self):
-        print(f"Logged in as {self.user} (ID: {self.user.id})")
-        print("------")
+        logger.info("Logged in as %s (ID: %s)", self.user, self.user.id)
         assert self.user is not None
 
     async def _create_reply(self, message: discord.Message):
@@ -91,37 +99,13 @@ class DiscordAgentClient(discord.Client):
         reply_text: str = await loop.run_in_executor(None, run_graph_sync, content)
 
         # Discord message limit safety
-        if len(reply_text) <= 1900:
-            await message.reply(reply_text)
-        else:
-            # Split long messages along new lines
-            lines = reply_text.split("\n")
-            chunks = []
-            current_chunk = ""
-
-            for line in lines:
-                # If adding this line would exceed the limit, start a new chunk
-                if len(current_chunk) + len(line) + 1 > 1900:  # +1 for newline
-                    if current_chunk:
-                        chunks.append(current_chunk.rstrip())
-                        current_chunk = line
-                    else:
-                        # If a single line is too long, split it by character count
-                        chunks.append(line[:1900])
-                        current_chunk = line[1900:]
-                else:
-                    current_chunk += line + "\n"
-
-            # Add the last chunk if it has content
-            if current_chunk.strip():
-                chunks.append(current_chunk.rstrip())
-
-            for i, chunk in enumerate(chunks):
-                await message.reply(chunk, mention_author=False)
+        chunks = chunk_message(reply_text, DISCORD_MESSAGE_LIMIT)
+        for i, chunk in enumerate(chunks):
+            await message.reply(chunk, mention_author=(i == 0))
 
     async def on_message(self, message: discord.Message):
         assert self.user is not None
-        print(f"Message received: {message.content}")
+        logger.debug("Message received: %s", message.content)
         # Ignore messages from ourselves
         if message.author.id == self.user.id:
             return
@@ -135,16 +119,16 @@ class DiscordAgentClient(discord.Client):
         if isinstance(message.channel, discord.DMChannel):
             should_reply = True
         elif self.mention_only:
-            print(f"Message mentions: {message.mentions}")
-            print(f"User name: {self.user.name}")
-            print(f"Role mentions: {message.role_mentions}")
+            logger.debug("Message mentions: %s", message.mentions)
+            logger.debug("User name: %s", self.user.name)
+            logger.debug("Role mentions: %s", message.role_mentions)
             # Check if the user is mentioned by role
             should_reply = self.user.name.lower() in {
                 role.name.lower() for role in message.role_mentions
             }
         else:
             should_reply = True
-        print(f"Should reply: {should_reply}")
+        logger.debug("Should reply: %s", should_reply)
         if not should_reply:
             return
 

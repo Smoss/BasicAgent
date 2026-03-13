@@ -8,12 +8,14 @@ from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_core.tools import tool
 
+from config import CHROMA_DB_PATH, EMBEDDING_MODEL
+
 
 def _get_memory_store() -> Chroma:
     """Create or return the persistent Chroma collection for long-term memories."""
-    db_root = os.path.join(".", "chroma_db")
+    db_root = CHROMA_DB_PATH
     os.makedirs(db_root, exist_ok=True)
-    embeddings = OllamaEmbeddings(model="nomic-embed-text", num_gpu=-1)
+    embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL, num_gpu=-1)
     return Chroma(
         collection_name="memories",
         persist_directory=db_root,
