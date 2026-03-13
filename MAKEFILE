@@ -1,3 +1,6 @@
+test:
+	uv run pytest tests/ -v
+
 format:
 	uv run ruff format .
 	uv run ruff check --fix .

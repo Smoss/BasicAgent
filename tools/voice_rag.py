@@ -1,3 +1,4 @@
+import logging
 from hashlib import md5
 from typing import Any, List, Optional
 from langchain_core.retrievers import BaseRetriever
@@ -7,12 +8,16 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
+from config import CHROMA_DB_PATH, EMBEDDING_MODEL
+
+logger = logging.getLogger(__name__)
+
 
 def get_voice_store(character_name: str) -> Chroma:
-    embeddings = OllamaEmbeddings(model="nomic-embed-text", num_gpu=-1)
+    embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL, num_gpu=-1)
     return Chroma(
         collection_name=f"{character_name}_voice_lines",
-        persist_directory=f"./chroma_db/{character_name}",
+        persist_directory=f"{CHROMA_DB_PATH}/{character_name}",
         embedding_function=embeddings,
     )
 
@@ -35,13 +40,13 @@ def populate_voice_lines(path: str, character_name: str):
 
     # Delete existing voice lines
     if ids:
-        print(f"Deleting {len(ids)} voice lines")
+        logger.info("Deleting %d voice lines", len(ids))
         store.delete(ids=ids)
 
     # Add new voice lines
     if docs:
         unique_docs = {doc.id: doc for doc in docs}
-        print(f"Adding {len(unique_docs)} voice lines")
+        logger.info("Adding %d voice lines", len(unique_docs))
         store.add_documents(
             documents=list(unique_docs.values()), ids=list(unique_docs.keys())
         )  # type: ignore

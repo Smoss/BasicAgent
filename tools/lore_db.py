@@ -8,6 +8,7 @@ from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
 
 from agent.types import DocumentIdTitle
+from config import CHROMA_DB_PATH, EMBEDDING_MODEL
 
 
 def _stable_id(*parts: str) -> str:
@@ -16,9 +17,9 @@ def _stable_id(*parts: str) -> str:
 
 
 def get_lore_store(collection_name: str = "lore") -> Chroma:
-    db_root = os.path.join(".", "chroma_db")
+    db_root = CHROMA_DB_PATH
     os.makedirs(db_root, exist_ok=True)
-    embeddings = OllamaEmbeddings(model="nomic-embed-text", num_gpu=-1)
+    embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL, num_gpu=-1)
     return Chroma(
         collection_name=collection_name,
         persist_directory=db_root,

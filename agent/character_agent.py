@@ -1,4 +1,5 @@
 import datetime
+import logging
 from langchain_core.language_models import LanguageModelInput
 from langgraph.graph import START, StateGraph
 from langchain_ollama import ChatOllama
@@ -22,8 +23,6 @@ from tools.helldivers.training_manual_types import (
 )
 from langgraph.checkpoint.memory import InMemorySaver
 
-
-# from typing import Optional
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 import random
 from tools.voice_rag import build_voice_retriever
@@ -36,6 +35,10 @@ from tools.lore_db import (
 from langchain_core.documents import Document
 
 from utils.persona_config import PersonaConfig
+from config import DEFAULT_CONTEXT_MODEL, DEFAULT_CHAT_MODEL, DEFAULT_CONTEXT_WINDOW
+
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleCharacterAgent:
@@ -45,17 +48,17 @@ class SimpleCharacterAgent:
     def __init__(
         self,
         *,
-        context_model: str = "gpt-oss:20b",
-        chat_model: str = "gpt-oss:20b",
-        context_window: int = 8192,
+        context_model: str = DEFAULT_CONTEXT_MODEL,
+        chat_model: str = DEFAULT_CHAT_MODEL,
+        context_window: int = DEFAULT_CONTEXT_WINDOW,
         debug: bool = False,
         max_voice_lines: int = 5,
         lore_search_k: int = 5,
         additional_context_k: int = 10,
         persona_config: PersonaConfig,
     ):
-        print(f"Initializing agent with context model: {context_model}")
-        print(f"Initializing agent with chat model: {chat_model}")
+        logger.info("Initializing agent with context model: %s", context_model)
+        logger.info("Initializing agent with chat model: %s", chat_model)
         self.context_model = context_model
         self.chat_model = chat_model
         self.context_window = context_window
@@ -106,17 +109,12 @@ class SimpleCharacterAgent:
             num_predict=4096,
         )
 
-        # context_retriever_tool = build_lore_retriever_tool(
-        #     store=self.lore_store,
-        #     collection_name="context",
-        # )
         planet_retriever_tool = build_lore_retriever_tool(
             store=self.planet_store,
             collection_name="planet",
         )
 
         planet_tools = {
-            # "retrieve_context_lore": context_retriever_tool,
             "retrieve_planet_lore": planet_retriever_tool,
         }
 
@@ -143,7 +141,7 @@ class SimpleCharacterAgent:
                         assert isinstance(user_text, str)
                         break
                 except Exception as e:
-                    print(f"Warning: Failed to get user text from {e}")
+                    logger.warning("Failed to get user text: %s", e)
 
             if not user_text:
                 return {"retrieved_lore_docs": []}
@@ -152,7 +150,7 @@ class SimpleCharacterAgent:
                 docs = self.lore_retriever.invoke(user_text) or []
                 return {"retrieved_lore_docs": docs}
             except Exception as e:
-                print(f"Warning: Lore retrieval failed: {e}")
+                logger.warning("Lore retrieval failed: %s", e)
                 return {"retrieved_lore_docs": []}
 
         def retrieve_style(state: State) -> State:
@@ -166,7 +164,7 @@ class SimpleCharacterAgent:
                         user_text = m.content if isinstance(m.content, str) else ""
                         break
                 except Exception as e:
-                    print(f"Warning: Failed to get user text from {e}")
+                    logger.warning("Failed to get user text: %s", e)
 
             assert isinstance(user_text, str)
             style_docs = []
@@ -175,7 +173,7 @@ class SimpleCharacterAgent:
                 try:
                     style_docs = self.voice_retriever.invoke(user_text or "")
                 except Exception as e:
-                    print(f"Warning: Failed to select voice lines from {e}")
+                    logger.warning("Failed to select voice lines: %s", e)
 
             # Fallback to deterministic sampling for stability and variety
             if not style_docs and self.voice_lines:
@@ -204,7 +202,7 @@ class SimpleCharacterAgent:
                         user_text = m.content if isinstance(m.content, str) else ""
                         break
                 except Exception as e:
-                    print(f"Warning: Failed to get user text from {e}")
+                    logger.warning("Failed to get user text: %s", e)
 
             assert isinstance(user_text, str)
             if not user_text:
@@ -257,10 +255,8 @@ class SimpleCharacterAgent:
                 }
 
             except Exception as e:
-                print(f"Warning: Context retrieval failed: {e}")
+                logger.warning("Context retrieval failed: %s", e)
                 return {"tool_messages": []}
-
-        # def check_planets
 
         def chatbot(state: State) -> State:
             """Main chatbot node that uses all retrieved documents"""
@@ -335,21 +331,6 @@ class SimpleCharacterAgent:
                 major_order_msg = SystemMessage(content=current_major_orders)
                 system_messages.append(major_order_msg)
 
-            # if (past_week_news := state.get("past_week_news")):
-            #     current_news = "The past week's news is:\n"
-            #     current_news += convert_news_list(past_week_news)
-            #     print(f"Current news: {current_news}")
-            #     news_msg = SystemMessage(
-            #         content=current_news
-            #     )
-            #     system_messages.append(news_msg)
-
-            # if (current_status := state.get("current_status")):
-            #     current_status_msg = SystemMessage(
-            #         content=f"The current events are:\n{convert_current_event_list(current_status.globalEvents)}"
-            #     )
-            #     system_messages.append(current_status_msg)
-
             # Add system prompt
             if self.system_prompt_text:
                 system_messages.append(SystemMessage(content=self.system_prompt_text))
@@ -378,7 +359,6 @@ class SimpleCharacterAgent:
         graph_builder.add_edge("retrieve_major_orders", "retrieve_current_status")
         graph_builder.add_edge("retrieve_current_status", "retrieve_news")
         graph_builder.add_edge("retrieve_news", "retrieve_context")
-        # graph_builder.add_edge("retrieve_context", "chatbot")
         graph_builder.add_conditional_edges(
             "retrieve_context",
             route_lore_retrieval,
@@ -392,7 +372,7 @@ class SimpleCharacterAgent:
         memory = InMemorySaver()
         graph = graph_builder.compile(checkpointer=memory)
         if self.debug:
-            print(graph.get_graph().draw_mermaid())
+            logger.debug(graph.get_graph().draw_mermaid())
         return graph
 
     @staticmethod
@@ -416,10 +396,10 @@ class SimpleCharacterAgent:
                     break
                 self.stream_graph_updates(graph, user_input)
             except KeyboardInterrupt:
-                print("Goodbye!")
+                logger.info("Goodbye!")
                 break
             except Exception as e:
-                print(e)
+                logger.exception("Error during agent run")
                 user_input = f"What do you think of the error?\n{e}"
                 self.stream_graph_updates(graph, user_input)
                 break

@@ -1,18 +1,6 @@
 from agent.types import DocumentIdTitle
 
 
-# "Additional context:
-# {additional_context}
-
-# Please provide any required tool calls to retrieve the additional documents and planets. Use the ids from the DocumentIdTitle objects to retrieve the documents and planets."
-
-
-# Already retrieved documents:
-# {"\n".join([f"- {title}: {content}" for title, content in zip(already_retrieved_titles, already_retrieved_content)])}
-
-
-# All available documents in the retrieve_context_lore database:
-# {"\n".join([str(doc) for doc in all_available_documents])}
 def create_context_prompt(
     system_prompt_text: str,
     user_text: str,

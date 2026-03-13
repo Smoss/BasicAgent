@@ -30,15 +30,7 @@ save_tool = Tool(
     func=save_to_txt,
 )
 
-# @tool('search_tool')
-# def search_tool(query: str) -> str:
-#     """Search the web for information"""
-#     return TavilySearch(max_results=5).invoke({"query": query})
-
 search_tool = DuckDuckGoSearchResults(max_results=5, output_format="list")  # type: ignore
-# search_tool = Tool(
-#     name="search_tool", description="Search the web for information", func=search.run
-# )
 
 wiki_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())  # type: ignore
 
@@ -109,7 +101,6 @@ def build_fandom_pages_tool(default_wiki: str):
                 summ = fandom.summary(t, sentences=sentences)
                 url = f"https://{default_wiki}.fandom.com/wiki/{_slugify(t)}"
                 pages_out.append({"title": t, "url": url, "summary": summ})
-                # print(f"Fetched summary for {t}: {summ}")
             except Exception:
                 pages_out.append(
                     {

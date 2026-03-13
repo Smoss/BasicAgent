@@ -1,6 +1,13 @@
+import logging
+
 import fire  # type: ignore
 
 from agent.character_agent import SimpleCharacterAgent
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
 
 
 def main():
