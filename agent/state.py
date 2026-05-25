@@ -25,3 +25,17 @@ class State(TypedDict):
     past_week_news: list[News]  # News from the past week
     current_status: CurrentStatus  # Current status, including time and current events
     tool_messages: Annotated[list[BaseMessage], add_messages]
+
+
+class StateUpdate(TypedDict, total=False):
+    messages: Annotated[list[BaseMessage], add_messages]
+    loop_count: int
+    retrieved_lore_docs: list[Document]
+    retrieved_style_docs: list[Document]
+    retrieved_context_docs: list[Document]
+    retrieved_planet_lore: list[Document]
+    active_campaigns: list[CampaignPlanet]
+    active_major_orders: list[MajorOrder]
+    past_week_news: list[News]
+    current_status: CurrentStatus
+    tool_messages: Annotated[list[BaseMessage], add_messages]

@@ -14,7 +14,7 @@ from agent.helldivers.nodes import (
     retrieve_news,
     route_lore_retrieval,
 )
-from agent.state import State
+from agent.state import State, StateUpdate
 from tools.helldivers.training_manual_types import (
     convert_current_event_list,
     convert_major_order_list,
@@ -129,7 +129,7 @@ class SimpleCharacterAgent:
             num_predict=4096,
         ).bind_tools(list(planet_tools.values()))
 
-        def retrieve_lore(state: State) -> State:
+        def retrieve_lore(state: State) -> StateUpdate:
             """Step 1: Retrieve lore using vector search and store in state"""
             messages = state["messages"]
             user_text = None
@@ -153,7 +153,7 @@ class SimpleCharacterAgent:
                 logger.warning("Lore retrieval failed: %s", e)
                 return {"retrieved_lore_docs": []}
 
-        def retrieve_style(state: State) -> State:
+        def retrieve_style(state: State) -> StateUpdate:
             """Step 2: Retrieve style messages"""
             messages = state["messages"]
             user_text = ""
@@ -189,7 +189,7 @@ class SimpleCharacterAgent:
 
             return {"retrieved_style_docs": style_docs}
 
-        def retrieve_context(state: State) -> State:
+        def retrieve_context(state: State) -> StateUpdate:
             """Step 5: Create context retriever that picks additional documents"""
             messages = state["messages"]
             retrieved_lore_docs = state.get("retrieved_lore_docs", [])
@@ -258,7 +258,7 @@ class SimpleCharacterAgent:
                 logger.warning("Context retrieval failed: %s", e)
                 return {"tool_messages": []}
 
-        def chatbot(state: State) -> State:
+        def chatbot(state: State) -> StateUpdate:
             """Main chatbot node that uses all retrieved documents"""
             messages = state["messages"]
             retrieved_lore_docs = state.get("retrieved_lore_docs", [])
