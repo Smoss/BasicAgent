@@ -15,7 +15,7 @@ class Environmental(BaseModel):
 
 class Planet(BaseModel):
     name: str
-    sector: str
+    sector: str | None = ""
     biome: Biome | None = None
     environmentals: list[Environmental]
 
